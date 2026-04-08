@@ -20,6 +20,7 @@ type Runner interface {
 	AppConfig(ctx context.Context, appName string) (AppConfig, error)
 	AppDomains(ctx context.Context, appName string) ([]Domain, error)
 	AppShares(ctx context.Context, appName string) (*AppShareList, error)
+	AppLogs(ctx context.Context, appName string) ([]LogEntry, error)
 	AppOpen(ctx context.Context, appName string) error
 	ServiceList(ctx context.Context) ([]Service, error)
 	ServiceShow(ctx context.Context, name string) (*Service, error)
@@ -83,6 +84,10 @@ func (r *CLIRunner) AppDomains(ctx context.Context, appName string) ([]Domain, e
 
 func (r *CLIRunner) AppShares(ctx context.Context, appName string) (*AppShareList, error) {
 	return runJSONPtr[AppShareList](ctx, r.exec, "app", "share", "ls", "-a", appName, "-o", "json")
+}
+
+func (r *CLIRunner) AppLogs(ctx context.Context, appName string) ([]LogEntry, error) {
+	return runJSON[[]LogEntry](ctx, r.exec, "app", "logs", "-a", appName, "--limit", "100", "-o", "json")
 }
 
 func (r *CLIRunner) AppOpen(ctx context.Context, appName string) error {

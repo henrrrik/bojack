@@ -12,7 +12,7 @@ import (
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
-var appTabs = []string{"Info", "Processes", "Stats", "Config", "Domains", "Sharing"}
+var appTabs = []string{"Info", "Processes", "Stats", "Config", "Domains", "Sharing", "Logs"}
 
 // AppDetailModel shows app details with tabbed sections.
 type AppDetailModel struct {
@@ -29,9 +29,10 @@ type AppDetailModel struct {
 	config    runway.AppConfig
 	domains   []runway.Domain
 	shares    *runway.AppShareList
+	logs      []runway.LogEntry
 
-	loaded [6]bool
-	errors [6]error
+	loaded [7]bool
+	errors [7]error
 }
 
 // NewAppDetailModel creates a new app detail model.
@@ -76,6 +77,10 @@ func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
 		m.loaded[5] = true
 		m.shares = teaMsg.Shares
 		m.errors[5] = teaMsg.Err
+	case msg.AppLogsResultMsg:
+		m.loaded[6] = true
+		m.logs = teaMsg.Logs
+		m.errors[6] = teaMsg.Err
 	case tea.KeyMsg:
 		return m.handleKey(teaMsg)
 	}
@@ -135,6 +140,8 @@ func (m AppDetailModel) renderActiveTab() string {
 		return m.renderDomainsTab()
 	case 5:
 		return m.renderSharingTab()
+	case 6:
+		return m.renderLogsTab()
 	}
 	return ""
 }
@@ -235,6 +242,17 @@ func (m AppDetailModel) renderSharingTab() string {
 	var b strings.Builder
 	for _, s := range m.shares.Data {
 		b.WriteString(fmt.Sprintf("  %s  (%s)\n", s.User, s.Role))
+	}
+	return b.String()
+}
+
+func (m AppDetailModel) renderLogsTab() string {
+	if len(m.logs) == 0 {
+		return "No log entries."
+	}
+	var b strings.Builder
+	for _, entry := range m.logs {
+		b.WriteString(fmt.Sprintf("  %s  [%s]  %s\n", entry.Time, entry.Type, entry.Content))
 	}
 	return b.String()
 }

@@ -293,6 +293,23 @@ func TestPlanList(t *testing.T) {
 	}
 }
 
+func TestAppLogs(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app logs -a my-app --limit 100 -o json": []byte(appLogsJSON),
+	})
+	r := NewCLIRunner(fake)
+	logs, err := r.AppLogs(context.Background(), "my-app")
+	if err != nil {
+		t.Fatalf("AppLogs: %v", err)
+	}
+	if len(logs) != 2 {
+		t.Fatalf("got %d, want 2", len(logs))
+	}
+	if logs[0].Content != "2026/04/05 23:27:57 shutting down server" {
+		t.Errorf("Content = %q", logs[0].Content)
+	}
+}
+
 func TestExecutorError(t *testing.T) {
 	fake := &FakeExecutor{responses: map[string][]byte{}}
 	r := NewCLIRunner(fake)
