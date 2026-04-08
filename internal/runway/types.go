@@ -97,7 +97,7 @@ type StatsValues struct {
 }
 
 type StatsRAM struct {
-	UsedBytes int64 `json:"used_bytes"`
+	UsedBytes float64 `json:"used_bytes"`
 }
 
 type StatsCPU struct {
@@ -105,12 +105,12 @@ type StatsCPU struct {
 }
 
 type StatsHDD struct {
-	UsedBytes int64 `json:"used_bytes"`
+	UsedBytes float64 `json:"used_bytes"`
 }
 
 type StatsNet struct {
-	ReceivedBytes    int64 `json:"received_bytes"`
-	TransmittedBytes int64 `json:"transmitted_bytes"`
+	ReceivedBytes    float64 `json:"received_bytes"`
+	TransmittedBytes float64 `json:"transmitted_bytes"`
 }
 
 // AppConfig is a map of environment variable key-value pairs.

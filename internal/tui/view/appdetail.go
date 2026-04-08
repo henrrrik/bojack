@@ -239,20 +239,20 @@ func (m AppDetailModel) renderSharingTab() string {
 	return b.String()
 }
 
-func formatBytes(b int64) string {
+func formatBytes(b float64) string {
 	const (
-		kb = 1024
+		kb = 1024.0
 		mb = kb * 1024
 		gb = mb * 1024
 	)
 	switch {
 	case b >= gb:
-		return fmt.Sprintf("%.1f GB", float64(b)/float64(gb))
+		return fmt.Sprintf("%.1f GB", b/gb)
 	case b >= mb:
-		return fmt.Sprintf("%.1f MB", float64(b)/float64(mb))
+		return fmt.Sprintf("%.1f MB", b/mb)
 	case b >= kb:
-		return fmt.Sprintf("%.1f KB", float64(b)/float64(kb))
+		return fmt.Sprintf("%.1f KB", b/kb)
 	default:
-		return fmt.Sprintf("%d B", b)
+		return fmt.Sprintf("%.0f B", b)
 	}
 }
