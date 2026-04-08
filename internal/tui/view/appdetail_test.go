@@ -21,6 +21,7 @@ func testDetailStyles() DetailStyles {
 		Value:       lipgloss.NewStyle(),
 		StatusUp:    lipgloss.NewStyle(),
 		StatusDown:  lipgloss.NewStyle(),
+		Sparkline:   lipgloss.NewStyle(),
 	}
 }
 
@@ -107,6 +108,74 @@ func TestAppDetailLogsTab(t *testing.T) {
 	}
 	if !strings.Contains(v, "[app]") {
 		t.Error("logs tab should show log type")
+	}
+}
+
+func TestSparklineAscending(t *testing.T) {
+	got := sparkline([]float64{0, 1, 2, 3, 4, 5, 6, 7}, 40)
+	want := "▁▂▃▄▅▆▇█"
+	if got != want {
+		t.Errorf("sparkline = %q, want %q", got, want)
+	}
+}
+
+func TestSparklineEmpty(t *testing.T) {
+	got := sparkline(nil, 40)
+	if got != "" {
+		t.Errorf("sparkline = %q, want empty", got)
+	}
+}
+
+func TestSparklineAllSame(t *testing.T) {
+	got := sparkline([]float64{5, 5, 5, 5}, 40)
+	// All same values should produce middle blocks
+	for _, r := range got {
+		if r != '▄' {
+			t.Errorf("sparkline = %q, expected all ▄", got)
+			break
+		}
+	}
+}
+
+func TestSparklineTruncatesWidth(t *testing.T) {
+	values := make([]float64, 100)
+	for i := range values {
+		values[i] = float64(i)
+	}
+	got := sparkline(values, 20)
+	// Should use last 20 values, so length = 20 runes
+	runes := []rune(got)
+	if len(runes) != 20 {
+		t.Errorf("len = %d, want 20", len(runes))
+	}
+}
+
+func TestStatsTabShowsSparklines(t *testing.T) {
+	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
+	m, _ = m.Update(msg.AppStatsResultMsg{
+		Stats: &runway.AppStats{
+			All: []runway.StatsEntry{
+				{Values: runway.StatsValues{CPU: runway.StatsCPU{Load: 0.1}}},
+				{Values: runway.StatsValues{CPU: runway.StatsCPU{Load: 0.5}}},
+				{Values: runway.StatsValues{CPU: runway.StatsCPU{Load: 0.9}}},
+			},
+			Latest: runway.StatsValues{
+				CPU: runway.StatsCPU{Load: 0.9},
+				RAM: runway.StatsRAM{UsedBytes: 1024},
+				HDD: runway.StatsHDD{UsedBytes: 2048},
+				Net: runway.StatsNet{ReceivedBytes: 512, TransmittedBytes: 256},
+			},
+		},
+	})
+	m.activeTab = 2
+	v := m.View()
+	// Should contain sparkline block characters
+	if !strings.ContainsAny(v, "▁▂▃▄▅▆▇█") {
+		t.Error("stats tab should contain sparkline characters")
+	}
+	// Should still show the latest value
+	if !strings.Contains(v, "0.90") {
+		t.Error("stats tab should show latest CPU load")
 	}
 }
 

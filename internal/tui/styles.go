@@ -17,6 +17,7 @@ type Styles struct {
 	StatusDown  lipgloss.Style
 	Label       lipgloss.Style
 	Value       lipgloss.Style
+	Sparkline   lipgloss.Style
 }
 
 // DefaultStyles returns the default style set.
@@ -54,6 +55,8 @@ func DefaultStyles() Styles {
 			Width(16),
 		Value: lipgloss.NewStyle().
 			Foreground(lipgloss.Color("255")),
+		Sparkline: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("86")),
 	}
 }
 
@@ -69,5 +72,6 @@ func (s Styles) DetailStyles() view.DetailStyles {
 		Value:       s.Value,
 		StatusUp:    s.StatusUp,
 		StatusDown:  s.StatusDown,
+		Sparkline:   s.Sparkline,
 	}
 }
