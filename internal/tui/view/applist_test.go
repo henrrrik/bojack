@@ -83,6 +83,30 @@ func TestAppListSelectEmitsNavigate(t *testing.T) {
 	}
 }
 
+func TestAppListSelectDbNavigatesToServiceDetail(t *testing.T) {
+	m := NewAppListModel(lipgloss.NewStyle(), 80, 24)
+	apps := []runway.AppListEntry{
+		{App: runway.App{ID: "my-db", Type: "db", Plan: "s-1", Region: "eu", Meta: runway.AppMeta{Role: "owner"}}},
+	}
+	m, _ = m.Update(msg.AppListResultMsg{Apps: apps})
+
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("expected command on enter")
+	}
+	result := cmd()
+	nav, ok := result.(msg.NavigateMsg)
+	if !ok {
+		t.Fatalf("expected NavigateMsg, got %T", result)
+	}
+	if nav.View != msg.ViewServiceDetail {
+		t.Errorf("View = %d, want ViewServiceDetail", nav.View)
+	}
+	if nav.Param != "my-db" {
+		t.Errorf("Param = %q, want %q", nav.Param, "my-db")
+	}
+}
+
 var errTest = &testError{}
 
 type testError struct{}
