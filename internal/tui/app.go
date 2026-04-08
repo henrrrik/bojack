@@ -1,0 +1,228 @@
+package tui
+
+import (
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/henrrrik/runway-tui/internal/msg"
+	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/runway-tui/internal/tui/view"
+)
+
+// Model is the root bubbletea model.
+type Model struct {
+	runner      runway.Runner
+	keys        KeyMap
+	styles      Styles
+	width       int
+	height      int
+	currentView msg.ViewID
+	viewStack   []msg.ViewID
+	paramStack  []string
+
+	mainMenu      view.MainMenuModel
+	appList       view.AppListModel
+	appDetail     view.AppDetailModel
+	serviceList   view.ServiceListModel
+	serviceDetail view.ServiceDetailModel
+	volumeList    view.VolumeListModel
+	domainList    view.DomainListModel
+	policyList    view.PolicyListModel
+	regionList    view.RegionListModel
+	planList      view.PlanListModel
+}
+
+// NewModel creates the root model.
+func NewModel(runner runway.Runner) Model {
+	keys := DefaultKeyMap()
+	styles := DefaultStyles()
+	return Model{
+		runner:      runner,
+		keys:        keys,
+		styles:      styles,
+		currentView: msg.ViewMainMenu,
+		mainMenu:    view.NewMainMenuModel(),
+	}
+}
+
+func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m Model) Update(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
+	switch teaMsg := teaMsg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = teaMsg.Width
+		m.height = teaMsg.Height
+		return m, m.propagateSize()
+	case msg.NavigateMsg:
+		return m.handleNavigate(teaMsg)
+	case msg.NavigateBackMsg:
+		return m.handleBack()
+	case tea.KeyMsg:
+		return m.handleGlobalKey(teaMsg)
+	}
+	return m.updateCurrentView(teaMsg)
+}
+
+func (m Model) View() string {
+	switch m.currentView {
+	case msg.ViewAppList:
+		return m.appList.View()
+	case msg.ViewAppDetail:
+		return m.appDetail.View()
+	case msg.ViewServiceList:
+		return m.serviceList.View()
+	case msg.ViewServiceDetail:
+		return m.serviceDetail.View()
+	case msg.ViewVolumeList:
+		return m.volumeList.View()
+	case msg.ViewDomainList:
+		return m.domainList.View()
+	case msg.ViewPolicyList:
+		return m.policyList.View()
+	case msg.ViewRegionList:
+		return m.regionList.View()
+	case msg.ViewPlanList:
+		return m.planList.View()
+	default:
+		return m.mainMenu.View()
+	}
+}
+
+func (m Model) handleGlobalKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(k, m.keys.Quit):
+		if m.currentView == msg.ViewMainMenu {
+			return m, tea.Quit
+		}
+		return m.handleBack()
+	case key.Matches(k, m.keys.Back):
+		if m.currentView != msg.ViewMainMenu {
+			return m.handleBack()
+		}
+	case key.Matches(k, m.keys.Refresh):
+		return m.handleRefresh()
+	case key.Matches(k, m.keys.Open):
+		return m.handleOpen()
+	}
+	return m.updateCurrentView(k)
+}
+
+func (m Model) handleRefresh() (tea.Model, tea.Cmd) {
+	param := m.currentParam()
+	return m.initView(m.currentView, param)
+}
+
+func (m Model) handleOpen() (tea.Model, tea.Cmd) {
+	if m.currentView != msg.ViewAppDetail {
+		return m.updateCurrentView(tea.KeyMsg{})
+	}
+	param := m.currentParam()
+	runner := m.runner
+	return m, func() tea.Msg {
+		_ = runner.AppOpen(view.CmdContext(), param)
+		return nil
+	}
+}
+
+func (m Model) currentParam() string {
+	if len(m.paramStack) > 0 {
+		return m.paramStack[len(m.paramStack)-1]
+	}
+	return ""
+}
+
+func (m Model) handleNavigate(nav msg.NavigateMsg) (tea.Model, tea.Cmd) {
+	m.viewStack = append(m.viewStack, m.currentView)
+	m.paramStack = append(m.paramStack, nav.Param)
+	m.currentView = nav.View
+	m, cmd := m.initView(nav.View, nav.Param)
+	return m, cmd
+}
+
+func (m Model) handleBack() (tea.Model, tea.Cmd) {
+	if len(m.viewStack) == 0 {
+		return m, nil
+	}
+	n := len(m.viewStack) - 1
+	m.currentView = m.viewStack[n]
+	m.viewStack = m.viewStack[:n]
+	m.paramStack = m.paramStack[:n]
+	return m, nil
+}
+
+func (m Model) initView(v msg.ViewID, param string) (Model, tea.Cmd) {
+	ctx := view.CmdContext()
+	switch v {
+	case msg.ViewAppList:
+		m.appList = view.NewAppListModel(m.styles.HelpBar, m.width, m.height)
+		return m, view.FetchAppList(ctx, m.runner)
+	case msg.ViewAppDetail:
+		m.appDetail = view.NewAppDetailModel(param, m.styles.DetailStyles(), m.width, m.height)
+		return m, view.FetchAppDetail(ctx, m.runner, param)
+	case msg.ViewServiceList:
+		m.serviceList = view.NewServiceListModel(m.styles.HelpBar, m.width, m.height)
+		return m, view.FetchServiceList(ctx, m.runner)
+	case msg.ViewServiceDetail:
+		m.serviceDetail = view.NewServiceDetailModel(param, m.styles.DetailStyles(), m.width, m.height)
+		return m, view.FetchServiceDetail(ctx, m.runner, param)
+	case msg.ViewVolumeList:
+		m.volumeList = view.NewVolumeListModel(m.styles.HelpBar, m.width, m.height)
+		return m, view.FetchVolumeList(ctx, m.runner)
+	case msg.ViewDomainList:
+		m.domainList = view.NewDomainListModel(m.styles.HelpBar, m.width, m.height)
+		return m, view.FetchDomainList(ctx, m.runner)
+	case msg.ViewPolicyList:
+		m.policyList = view.NewPolicyListModel(m.styles.HelpBar, m.width, m.height)
+		return m, view.FetchPolicyList(ctx, m.runner)
+	case msg.ViewRegionList:
+		m.regionList = view.NewRegionListModel(m.styles.HelpBar, m.width, m.height)
+		return m, view.FetchRegionList(ctx, m.runner)
+	case msg.ViewPlanList:
+		m.planList = view.NewPlanListModel(m.styles.HelpBar, m.width, m.height)
+		return m, view.FetchPlanList(ctx, m.runner)
+	}
+	return m, nil
+}
+
+func (m Model) updateCurrentView(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch m.currentView {
+	case msg.ViewMainMenu:
+		m.mainMenu, cmd = m.mainMenu.Update(teaMsg)
+	case msg.ViewAppList:
+		m.appList, cmd = m.appList.Update(teaMsg)
+	case msg.ViewAppDetail:
+		m.appDetail, cmd = m.appDetail.Update(teaMsg)
+	case msg.ViewServiceList:
+		m.serviceList, cmd = m.serviceList.Update(teaMsg)
+	case msg.ViewServiceDetail:
+		m.serviceDetail, cmd = m.serviceDetail.Update(teaMsg)
+	default:
+		return m.updateLeafView(teaMsg)
+	}
+	return m, cmd
+}
+
+func (m Model) updateLeafView(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch m.currentView {
+	case msg.ViewVolumeList:
+		m.volumeList, cmd = m.volumeList.Update(teaMsg)
+	case msg.ViewDomainList:
+		m.domainList, cmd = m.domainList.Update(teaMsg)
+	case msg.ViewPolicyList:
+		m.policyList, cmd = m.policyList.Update(teaMsg)
+	case msg.ViewRegionList:
+		m.regionList, cmd = m.regionList.Update(teaMsg)
+	case msg.ViewPlanList:
+		m.planList, cmd = m.planList.Update(teaMsg)
+	}
+	return m, cmd
+}
+
+func (m Model) propagateSize() tea.Cmd {
+	return func() tea.Msg {
+		return tea.WindowSizeMsg{Width: m.width, Height: m.height}
+	}
+}
