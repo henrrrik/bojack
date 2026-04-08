@@ -196,16 +196,70 @@ func (m AppDetailModel) renderStatsTab() string {
 		return "No stats available."
 	}
 	l := m.stats.Latest
-	var b strings.Builder
-	row := func(label, value string) {
-		b.WriteString(m.styles.Label.Render(label) + m.styles.Value.Render(value) + "\n")
+	graphWidth := m.width - 4
+	if graphWidth > 60 {
+		graphWidth = 60
 	}
-	row("CPU Load:", fmt.Sprintf("%.2f", l.CPU.Load))
-	row("RAM Used:", formatBytes(l.RAM.UsedBytes))
-	row("HDD Used:", formatBytes(l.HDD.UsedBytes))
-	row("Net Rx:", formatBytes(l.Net.ReceivedBytes))
-	row("Net Tx:", formatBytes(l.Net.TransmittedBytes))
+	var b strings.Builder
+	row := func(label, value string, series []float64) {
+		b.WriteString(m.styles.Label.Render(label) + m.styles.Value.Render(value) + "\n")
+		if graph := sparkline(series, graphWidth); graph != "" {
+			b.WriteString("  " + m.styles.Sparkline.Render(graph) + "\n")
+		}
+		b.WriteString("\n")
+	}
+	all := m.stats.All
+	row("CPU Load:", fmt.Sprintf("%.2f", l.CPU.Load),
+		extractSeries(all, func(v runway.StatsValues) float64 { return v.CPU.Load }))
+	row("RAM Used:", formatBytes(l.RAM.UsedBytes),
+		extractSeries(all, func(v runway.StatsValues) float64 { return v.RAM.UsedBytes }))
+	row("HDD Used:", formatBytes(l.HDD.UsedBytes),
+		extractSeries(all, func(v runway.StatsValues) float64 { return v.HDD.UsedBytes }))
+	row("Net Rx:", formatBytes(l.Net.ReceivedBytes),
+		extractSeries(all, func(v runway.StatsValues) float64 { return v.Net.ReceivedBytes }))
+	row("Net Tx:", formatBytes(l.Net.TransmittedBytes),
+		extractSeries(all, func(v runway.StatsValues) float64 { return v.Net.TransmittedBytes }))
 	return b.String()
+}
+
+func extractSeries(entries []runway.StatsEntry, fn func(runway.StatsValues) float64) []float64 {
+	values := make([]float64, len(entries))
+	for i, e := range entries {
+		values[i] = fn(e.Values)
+	}
+	return values
+}
+
+var sparkBlocks = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
+
+func sparkline(values []float64, width int) string {
+	if len(values) == 0 {
+		return ""
+	}
+	if len(values) > width {
+		values = values[len(values)-width:]
+	}
+	min, max := values[0], values[0]
+	for _, v := range values[1:] {
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+	}
+	var sb strings.Builder
+	for _, v := range values {
+		idx := 3
+		if max > min {
+			idx = int((v - min) / (max - min) * 7)
+			if idx > 7 {
+				idx = 7
+			}
+		}
+		sb.WriteRune(sparkBlocks[idx])
+	}
+	return sb.String()
 }
 
 func (m AppDetailModel) renderConfigTab() string {
