@@ -1,4 +1,4 @@
-runway-tui
+/runway-tui
 *.exe
 *.test
 *.out
