@@ -354,10 +354,10 @@ func TestUnmarshalAppStats(t *testing.T) {
 		t.Errorf("CPU.Load = %f", stats.Latest.CPU.Load)
 	}
 	if stats.Latest.RAM.UsedBytes != 134217728 {
-		t.Errorf("RAM.UsedBytes = %d", stats.Latest.RAM.UsedBytes)
+		t.Errorf("RAM.UsedBytes = %f", stats.Latest.RAM.UsedBytes)
 	}
 	if stats.Latest.Net.ReceivedBytes != 1048576 {
-		t.Errorf("Net.ReceivedBytes = %d", stats.Latest.Net.ReceivedBytes)
+		t.Errorf("Net.ReceivedBytes = %f", stats.Latest.Net.ReceivedBytes)
 	}
 }
 
