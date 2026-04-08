@@ -52,8 +52,13 @@ func (m AppListModel) Update(teaMsg tea.Msg) (AppListModel, tea.Cmd) {
 		if teaMsg.String() == "enter" && len(m.apps) > 0 {
 			row := m.table.SelectedRow()
 			if row != nil {
+				name := row[0]
+				target := msg.ViewAppDetail
+				if row[1] == "db" {
+					target = msg.ViewServiceDetail
+				}
 				return m, func() tea.Msg {
-					return msg.NavigateMsg{View: msg.ViewAppDetail, Param: row[0]}
+					return msg.NavigateMsg{View: target, Param: name}
 				}
 			}
 		}
