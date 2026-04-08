@@ -78,6 +78,13 @@ type Process struct {
 	Integrations []json.RawMessage `json:"integrations"`
 }
 
+// LogEntry represents a single log line.
+type LogEntry struct {
+	Content string `json:"content"`
+	Time    string `json:"time"`
+	Type    string `json:"type"`
+}
+
 // AppStats is the response from "app stats -o json".
 type AppStats struct {
 	All    []StatsEntry `json:"all"`

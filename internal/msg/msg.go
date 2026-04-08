@@ -68,6 +68,11 @@ type AppSharesResultMsg struct {
 	Err    error
 }
 
+type AppLogsResultMsg struct {
+	Logs []runway.LogEntry
+	Err  error
+}
+
 type ServiceListResultMsg struct {
 	Services []runway.Service
 	Err      error

@@ -93,6 +93,23 @@ func TestAppDetailConfigTab(t *testing.T) {
 	}
 }
 
+func TestAppDetailLogsTab(t *testing.T) {
+	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
+	m, _ = m.Update(msg.AppLogsResultMsg{
+		Logs: []runway.LogEntry{
+			{Content: "shutting down server", Time: "2026-04-05T23:27:57Z", Type: "app"},
+		},
+	})
+	m.activeTab = 6
+	v := m.View()
+	if !strings.Contains(v, "shutting down server") {
+		t.Error("logs tab should show log content")
+	}
+	if !strings.Contains(v, "[app]") {
+		t.Error("logs tab should show log type")
+	}
+}
+
 func TestAppDetailErrorTab(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
 	m, _ = m.Update(msg.AppDetailResultMsg{Err: errTest})

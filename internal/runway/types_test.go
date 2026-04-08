@@ -559,6 +559,38 @@ func TestUnmarshalRegionList(t *testing.T) {
 	}
 }
 
+const appLogsJSON = `[
+  {
+    "content": "2026/04/05 23:27:57 shutting down server",
+    "time": "2026-04-05T23:27:57Z",
+    "type": "app"
+  },
+  {
+    "content": "2026/04/05 23:27:56 request handled",
+    "time": "2026-04-05T23:27:56Z",
+    "type": "app"
+  }
+]`
+
+func TestUnmarshalLogEntries(t *testing.T) {
+	var logs []LogEntry
+	if err := json.Unmarshal([]byte(appLogsJSON), &logs); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(logs) != 2 {
+		t.Fatalf("got %d, want 2", len(logs))
+	}
+	if logs[0].Content != "2026/04/05 23:27:57 shutting down server" {
+		t.Errorf("Content = %q", logs[0].Content)
+	}
+	if logs[0].Time != "2026-04-05T23:27:57Z" {
+		t.Errorf("Time = %q", logs[0].Time)
+	}
+	if logs[0].Type != "app" {
+		t.Errorf("Type = %q", logs[0].Type)
+	}
+}
+
 func TestUnmarshalPlanList(t *testing.T) {
 	var plans []Plan
 	if err := json.Unmarshal([]byte(planListJSON), &plans); err != nil {

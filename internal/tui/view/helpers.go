@@ -50,6 +50,10 @@ func FetchAppDetail(ctx context.Context, r runway.Runner, name string) tea.Cmd {
 			s, err := r.AppShares(ctx, name)
 			return msg.AppSharesResultMsg{Shares: s, Err: err}
 		},
+		func() tea.Msg {
+			l, err := r.AppLogs(ctx, name)
+			return msg.AppLogsResultMsg{Logs: l, Err: err}
+		},
 	)
 }
 
