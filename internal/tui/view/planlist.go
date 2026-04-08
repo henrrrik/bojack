@@ -90,10 +90,10 @@ func buildPlanTable(plans []runway.Plan, height int) table.Model {
 	for i, p := range plans {
 		rows[i] = table.Row{
 			p.Plan,
-			fmt.Sprintf("%d", p.CPU),
-			fmt.Sprintf("%d", p.RAMMB),
-			fmt.Sprintf("%d", p.HDDMB),
-			fmt.Sprintf("%d", p.BandwidthMbits),
+			fmt.Sprintf("%g", p.CPU),
+			fmt.Sprintf("%g", p.RAMMB),
+			fmt.Sprintf("%g", p.HDDMB),
+			fmt.Sprintf("%g", p.BandwidthMbits),
 			fmt.Sprintf("%.4f", p.PriceHour),
 			p.Description,
 		}

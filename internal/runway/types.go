@@ -214,10 +214,10 @@ type RegionDNS struct {
 type Plan struct {
 	Plan            string  `json:"plan"`
 	SKU             string  `json:"sku"`
-	CPU             int     `json:"cpu"`
-	RAMMB           int     `json:"ram_mb"`
-	HDDMB           int     `json:"hdd_mb"`
-	BandwidthMbits  int     `json:"bandwidth_mbits"`
+	CPU             float64 `json:"cpu"`
+	RAMMB           float64 `json:"ram_mb"`
+	HDDMB           float64 `json:"hdd_mb"`
+	BandwidthMbits  float64 `json:"bandwidth_mbits"`
 	PriceHour       float64 `json:"price_hour"`
 	Description     string  `json:"description"`
 	Autoscaling     bool    `json:"autoscaling"`

@@ -572,10 +572,10 @@ func TestUnmarshalPlanList(t *testing.T) {
 		t.Errorf("Plan = %q", p.Plan)
 	}
 	if p.CPU != 1 {
-		t.Errorf("CPU = %d", p.CPU)
+		t.Errorf("CPU = %f", p.CPU)
 	}
 	if p.RAMMB != 512 {
-		t.Errorf("RAMMB = %d", p.RAMMB)
+		t.Errorf("RAMMB = %f", p.RAMMB)
 	}
 	if p.PriceHour != 0.01 {
 		t.Errorf("PriceHour = %f", p.PriceHour)
