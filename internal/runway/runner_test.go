@@ -1,0 +1,336 @@
+package runway
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"testing"
+)
+
+type FakeExecutor struct {
+	responses map[string][]byte
+	lastArgs  []string
+}
+
+func (f *FakeExecutor) Execute(_ context.Context, args ...string) ([]byte, error) {
+	f.lastArgs = args
+	key := strings.Join(args, " ")
+	resp, ok := f.responses[key]
+	if !ok {
+		return nil, fmt.Errorf("unexpected command: %s", key)
+	}
+	return resp, nil
+}
+
+func newFake(responses map[string][]byte) *FakeExecutor {
+	return &FakeExecutor{responses: responses}
+}
+
+func TestAppList(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app ls -o json": []byte(appListJSON),
+	})
+	r := NewCLIRunner(fake)
+	entries, err := r.AppList(context.Background())
+	if err != nil {
+		t.Fatalf("AppList: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("got %d entries, want 1", len(entries))
+	}
+	if entries[0].App.ID != "my-app" {
+		t.Errorf("App.ID = %q", entries[0].App.ID)
+	}
+}
+
+func TestAppShow(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app show -a my-app -o json": []byte(appDetailJSON),
+	})
+	r := NewCLIRunner(fake)
+	detail, err := r.AppShow(context.Background(), "my-app")
+	if err != nil {
+		t.Fatalf("AppShow: %v", err)
+	}
+	if detail.App.ID != "my-app" {
+		t.Errorf("App.ID = %q", detail.App.ID)
+	}
+	if !detail.Settings.Routable {
+		t.Error("Settings.Routable should be true")
+	}
+}
+
+func TestAppProcesses(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app ps -a my-app -o json": []byte(processListJSON),
+	})
+	r := NewCLIRunner(fake)
+	procs, err := r.AppProcesses(context.Background(), "my-app")
+	if err != nil {
+		t.Fatalf("AppProcesses: %v", err)
+	}
+	if len(procs) != 1 {
+		t.Fatalf("got %d, want 1", len(procs))
+	}
+	if procs[0].State != "up" {
+		t.Errorf("State = %q", procs[0].State)
+	}
+}
+
+func TestAppStats(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app stats -a my-app -o json": []byte(appStatsJSON),
+	})
+	r := NewCLIRunner(fake)
+	stats, err := r.AppStats(context.Background(), "my-app")
+	if err != nil {
+		t.Fatalf("AppStats: %v", err)
+	}
+	if stats.Latest.CPU.Load != 0.25 {
+		t.Errorf("CPU.Load = %f", stats.Latest.CPU.Load)
+	}
+}
+
+func TestAppConfig(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app config ls -a my-app -o json": []byte(appConfigJSON),
+	})
+	r := NewCLIRunner(fake)
+	config, err := r.AppConfig(context.Background(), "my-app")
+	if err != nil {
+		t.Fatalf("AppConfig: %v", err)
+	}
+	if config["PORT"] != "8080" {
+		t.Errorf("PORT = %q", config["PORT"])
+	}
+}
+
+func TestAppDomains(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app domain ls -a my-app -o json": []byte(appDomainListJSON),
+	})
+	r := NewCLIRunner(fake)
+	domains, err := r.AppDomains(context.Background(), "my-app")
+	if err != nil {
+		t.Fatalf("AppDomains: %v", err)
+	}
+	if len(domains) != 1 {
+		t.Fatalf("got %d, want 1", len(domains))
+	}
+}
+
+func TestAppShares(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app share ls -a my-app -o json": []byte(appShareListJSON),
+	})
+	r := NewCLIRunner(fake)
+	shares, err := r.AppShares(context.Background(), "my-app")
+	if err != nil {
+		t.Fatalf("AppShares: %v", err)
+	}
+	if len(shares.Data) != 2 {
+		t.Fatalf("got %d, want 2", len(shares.Data))
+	}
+}
+
+func TestServiceList(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"service ls -o json": []byte(serviceListJSON),
+	})
+	r := NewCLIRunner(fake)
+	services, err := r.ServiceList(context.Background())
+	if err != nil {
+		t.Fatalf("ServiceList: %v", err)
+	}
+	if len(services) != 1 {
+		t.Fatalf("got %d, want 1", len(services))
+	}
+	if services[0].Name != "my-db" {
+		t.Errorf("Name = %q", services[0].Name)
+	}
+}
+
+func TestServiceShow(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"service show my-db -o json": []byte(serviceShowJSON),
+	})
+	r := NewCLIRunner(fake)
+	s, err := r.ServiceShow(context.Background(), "my-db")
+	if err != nil {
+		t.Fatalf("ServiceShow: %v", err)
+	}
+	if s.Credentials == nil {
+		t.Fatal("Credentials should not be nil")
+	}
+	if s.Credentials.Username != "admin" {
+		t.Errorf("Username = %q", s.Credentials.Username)
+	}
+}
+
+func TestServiceDSN(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"service dsn my-db -o json": []byte(serviceDSNJSON),
+	})
+	r := NewCLIRunner(fake)
+	dsn, err := r.ServiceDSN(context.Background(), "my-db")
+	if err != nil {
+		t.Fatalf("ServiceDSN: %v", err)
+	}
+	if dsn["DATABASE_URL"] == "" {
+		t.Error("DATABASE_URL should not be empty")
+	}
+}
+
+func TestServiceConfig(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"service config ls my-db -o json": []byte(`{"max_connections": "100"}`),
+	})
+	r := NewCLIRunner(fake)
+	config, err := r.ServiceConfig(context.Background(), "my-db")
+	if err != nil {
+		t.Fatalf("ServiceConfig: %v", err)
+	}
+	if config["max_connections"] != "100" {
+		t.Errorf("max_connections = %q", config["max_connections"])
+	}
+}
+
+func TestServiceConfigNull(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"service config ls my-db -o json": []byte(`null`),
+	})
+	r := NewCLIRunner(fake)
+	config, err := r.ServiceConfig(context.Background(), "my-db")
+	if err != nil {
+		t.Fatalf("ServiceConfig: %v", err)
+	}
+	if config != nil {
+		t.Errorf("expected nil, got %v", config)
+	}
+}
+
+func TestServiceBackups(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"service backup ls my-db -o json": []byte(`[]`),
+	})
+	r := NewCLIRunner(fake)
+	raw, err := r.ServiceBackups(context.Background(), "my-db")
+	if err != nil {
+		t.Fatalf("ServiceBackups: %v", err)
+	}
+	if string(raw) != "[]" {
+		t.Errorf("got %q", string(raw))
+	}
+}
+
+func TestVolumeList(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"volume ls -o json": []byte(volumeListJSON),
+	})
+	r := NewCLIRunner(fake)
+	volumes, err := r.VolumeList(context.Background())
+	if err != nil {
+		t.Fatalf("VolumeList: %v", err)
+	}
+	if len(volumes) != 1 {
+		t.Fatalf("got %d, want 1", len(volumes))
+	}
+}
+
+func TestDomainList(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"domain ls -o json": []byte(domainListJSON),
+	})
+	r := NewCLIRunner(fake)
+	domains, err := r.DomainList(context.Background())
+	if err != nil {
+		t.Fatalf("DomainList: %v", err)
+	}
+	if len(domains) != 1 {
+		t.Fatalf("got %d, want 1", len(domains))
+	}
+}
+
+func TestPolicyList(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"policy ls -o json": []byte(policyListJSON),
+	})
+	r := NewCLIRunner(fake)
+	policies, err := r.PolicyList(context.Background())
+	if err != nil {
+		t.Fatalf("PolicyList: %v", err)
+	}
+	if len(policies) != 1 {
+		t.Fatalf("got %d, want 1", len(policies))
+	}
+}
+
+func TestRegionList(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"region ls -o json": []byte(regionListJSON),
+	})
+	r := NewCLIRunner(fake)
+	regions, err := r.RegionList(context.Background())
+	if err != nil {
+		t.Fatalf("RegionList: %v", err)
+	}
+	if len(regions) != 1 {
+		t.Fatalf("got %d, want 1", len(regions))
+	}
+}
+
+func TestPlanList(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"plan ls -o json": []byte(planListJSON),
+	})
+	r := NewCLIRunner(fake)
+	plans, err := r.PlanList(context.Background())
+	if err != nil {
+		t.Fatalf("PlanList: %v", err)
+	}
+	if len(plans) != 1 {
+		t.Fatalf("got %d, want 1", len(plans))
+	}
+}
+
+func TestAppLogs(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app logs -a my-app --limit 100 -o json": []byte(appLogsJSON),
+	})
+	r := NewCLIRunner(fake)
+	logs, err := r.AppLogs(context.Background(), "my-app")
+	if err != nil {
+		t.Fatalf("AppLogs: %v", err)
+	}
+	if len(logs) != 2 {
+		t.Fatalf("got %d, want 2", len(logs))
+	}
+	if logs[0].Content != "2026/04/05 23:27:57 shutting down server" {
+		t.Errorf("Content = %q", logs[0].Content)
+	}
+}
+
+func TestExecutorError(t *testing.T) {
+	fake := &FakeExecutor{responses: map[string][]byte{}}
+	r := NewCLIRunner(fake)
+	_, err := r.AppList(context.Background())
+	if err == nil {
+		t.Fatal("expected error for unknown command")
+	}
+}
+
+func TestAppOpenArgs(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app open -a my-app": {},
+	})
+	r := NewCLIRunner(fake)
+	err := r.AppOpen(context.Background(), "my-app")
+	if err != nil {
+		t.Fatalf("AppOpen: %v", err)
+	}
+	expected := "app open -a my-app"
+	got := strings.Join(fake.lastArgs, " ")
+	if got != expected {
+		t.Errorf("args = %q, want %q", got, expected)
+	}
+}
