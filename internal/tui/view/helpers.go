@@ -2,6 +2,8 @@ package view
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -131,4 +133,27 @@ func renderHelp(style lipgloss.Style, items ...string) string {
 		result += item
 	}
 	return style.Render(result)
+}
+
+// formatMB renders a size given in megabytes, e.g. "5120" -> "5.0 GB".
+// Unparseable input is returned unchanged; empty input becomes "-".
+func formatMB(s string) string {
+	if s == "" {
+		return "-"
+	}
+	mb, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return s
+	}
+	if mb < 1024 {
+		return fmt.Sprintf("%.0f MB", mb)
+	}
+	return fmt.Sprintf("%.1f GB", mb/1024)
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }

@@ -58,3 +58,20 @@ func TestServiceDetailDSNTab(t *testing.T) {
 		t.Error("DSN tab should show DSN key")
 	}
 }
+
+func TestServiceDetailVolumeSizeInMB(t *testing.T) {
+	m := NewServiceDetailModel("my-db", testDetailStyles(), 120, 24)
+	m, _ = m.Update(msg.ServiceDetailResultMsg{
+		Service: &runway.Service{
+			Name:    "my-db",
+			Volumes: []runway.ServiceVolume{{Name: "data", Size: "5120", Mountpoint: "/data"}},
+		},
+	})
+	v := m.View()
+	if !strings.Contains(v, "5.0 GB") {
+		t.Errorf("volume size should be shown as 5.0 GB, got %q", v)
+	}
+	if strings.Contains(v, "bytes") {
+		t.Errorf("volume size is in MB, not bytes, got %q", v)
+	}
+}

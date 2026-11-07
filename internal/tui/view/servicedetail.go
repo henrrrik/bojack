@@ -152,7 +152,7 @@ func (m ServiceDetailModel) renderInfoTab() string {
 	}
 	if len(s.Volumes) > 0 {
 		for _, v := range s.Volumes {
-			row("Volume:", fmt.Sprintf("%s at %s (%s bytes)", v.Name, v.Mountpoint, v.Size))
+			row("Volume:", fmt.Sprintf("%s at %s (%s)", v.Name, v.Mountpoint, formatMB(v.Size)))
 		}
 	}
 	return b.String()

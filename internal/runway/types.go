@@ -27,8 +27,16 @@ type AppMeta struct {
 
 // AppListEntry is one item from "app ls -o json".
 type AppListEntry struct {
-	App     App      `json:"app"`
-	Domains []Domain `json:"domains"`
+	App     App       `json:"app"`
+	Status  AppStatus `json:"status"`
+	Domains []Domain  `json:"domains"`
+}
+
+// AppStatus is the runtime status of an app. Fields are empty for services.
+type AppStatus struct {
+	Status           string `json:"status"`
+	DeploymentStatus string `json:"deployment_status"`
+	BuildStatus      string `json:"build_status"`
 }
 
 // AppDetail is the response from "app show -o json".
@@ -159,7 +167,7 @@ type ServiceCredentials struct {
 
 type ServiceVolume struct {
 	Name       string `json:"name"`
-	Size       string `json:"size"`
+	Size       string `json:"size"` // in MB, sent as a string
 	Mountpoint string `json:"mountpoint"`
 }
 
@@ -174,7 +182,7 @@ type Volume struct {
 	Name       string `json:"name"`
 	App        string `json:"app"`
 	Mountpoint string `json:"mountpoint"`
-	Size       string `json:"size"`
+	SizeMB     int    `json:"size"`
 	Attachable bool   `json:"attachable"`
 	Detachable bool   `json:"detachable"`
 	Deletable  bool   `json:"deletable"`

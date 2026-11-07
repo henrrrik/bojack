@@ -94,6 +94,7 @@ func buildAppTable(apps []runway.AppListEntry, width, height int) table.Model {
 		{Title: "Plan", Width: 14},
 		{Title: "Region", Width: 14},
 		{Title: "Role", Width: 10},
+		{Title: "Status", Width: 10},
 	}
 
 	rows := make([]table.Row, len(apps))
@@ -104,6 +105,7 @@ func buildAppTable(apps []runway.AppListEntry, width, height int) table.Model {
 			a.App.Plan,
 			a.App.Region,
 			a.App.Meta.Role,
+			orDash(a.Status.Status),
 		}
 	}
 

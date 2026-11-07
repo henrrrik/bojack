@@ -1,6 +1,8 @@
 package view
 
 import (
+	"strconv"
+
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -83,7 +85,7 @@ func buildVolumeTable(volumes []runway.Volume, height int) table.Model {
 
 	rows := make([]table.Row, len(volumes))
 	for i, v := range volumes {
-		rows[i] = table.Row{v.Name, v.App, v.Mountpoint, v.Size}
+		rows[i] = table.Row{v.Name, v.App, v.Mountpoint, formatMB(strconv.Itoa(v.SizeMB))}
 	}
 
 	t := table.New(
