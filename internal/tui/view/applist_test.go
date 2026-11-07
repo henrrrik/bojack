@@ -112,3 +112,19 @@ var errTest = &testError{}
 type testError struct{}
 
 func (e *testError) Error() string { return "test error" }
+
+func TestAppListShowsStatus(t *testing.T) {
+	m := NewAppListModel(lipgloss.NewStyle(), 120, 24)
+	apps := []runway.AppListEntry{
+		{App: runway.App{ID: "up-app", Type: "app"}, Status: runway.AppStatus{Status: "running"}},
+		{App: runway.App{ID: "db-app", Type: "db"}},
+	}
+	m, _ = m.Update(msg.AppListResultMsg{Apps: apps})
+	v := m.View()
+	if !strings.Contains(v, "Status") {
+		t.Errorf("view should have a Status column, got %q", v)
+	}
+	if !strings.Contains(v, "running") {
+		t.Errorf("view should show app status, got %q", v)
+	}
+}

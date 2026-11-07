@@ -22,6 +22,12 @@ const appListJSON = `[
       ],
       "meta": {"role": "owner"}
     },
+    "status": {
+      "status": "running",
+      "deployment_status": "running",
+      "build_status": "",
+      "integrations": []
+    },
     "domains": [
       {
         "app": "my-app",
@@ -178,7 +184,10 @@ const volumeListJSON = `[
     "name": "data",
     "app": "my-db",
     "mountpoint": "/var/lib/postgresql",
-    "size": "1073741824",
+    "size": 5120,
+    "size_extra": 0,
+    "replicas": [],
+    "is_replica": false,
     "attachable": false,
     "detachable": false,
     "deletable": false,
@@ -270,6 +279,16 @@ func TestUnmarshalAppListApp(t *testing.T) {
 	}
 	if e.App.Meta.Role != "owner" {
 		t.Errorf("Meta.Role = %q", e.App.Meta.Role)
+	}
+}
+
+func TestUnmarshalAppListStatus(t *testing.T) {
+	e := unmarshalAppListEntry(t)
+	if e.Status.Status != "running" {
+		t.Errorf("Status.Status = %q, want %q", e.Status.Status, "running")
+	}
+	if e.Status.DeploymentStatus != "running" {
+		t.Errorf("Status.DeploymentStatus = %q", e.Status.DeploymentStatus)
 	}
 }
 
@@ -482,8 +501,8 @@ func TestUnmarshalVolumeList(t *testing.T) {
 	if v.App != "my-db" {
 		t.Errorf("App = %q", v.App)
 	}
-	if v.Size != "1073741824" {
-		t.Errorf("Size = %q", v.Size)
+	if v.SizeMB != 5120 {
+		t.Errorf("SizeMB = %d, want 5120", v.SizeMB)
 	}
 	if !v.Resizable {
 		t.Error("Resizable should be true")
