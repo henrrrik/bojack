@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"os/exec"
+	"strconv"
+	"time"
 )
 
 // CommandExecutor runs a CLI command and returns its stdout.
@@ -20,7 +22,7 @@ type Runner interface {
 	AppConfig(ctx context.Context, appName string) (AppConfig, error)
 	AppDomains(ctx context.Context, appName string) ([]Domain, error)
 	AppShares(ctx context.Context, appName string) (*AppShareList, error)
-	AppLogs(ctx context.Context, appName string) ([]LogEntry, error)
+	AppLogs(ctx context.Context, appName string, opts LogOptions) ([]LogEntry, error)
 	AppOpen(ctx context.Context, appName string) error
 	ServiceList(ctx context.Context) ([]Service, error)
 	ServiceShow(ctx context.Context, name string) (*Service, error)
@@ -52,11 +54,18 @@ func (e *ExecCommandExecutor) Execute(ctx context.Context, args ...string) ([]by
 // CLIRunner implements Runner by shelling out to the runway CLI.
 type CLIRunner struct {
 	exec CommandExecutor
+	now  func() time.Time
 }
 
 // NewCLIRunner creates a Runner backed by the given CommandExecutor.
 func NewCLIRunner(exec CommandExecutor) *CLIRunner {
-	return &CLIRunner{exec: exec}
+	return &CLIRunner{exec: exec, now: time.Now}
+}
+
+// WithClock replaces the clock used to compute relative log start times.
+func (r *CLIRunner) WithClock(now func() time.Time) *CLIRunner {
+	r.now = now
+	return r
 }
 
 func (r *CLIRunner) AppList(ctx context.Context) ([]AppListEntry, error) {
@@ -88,8 +97,49 @@ func (r *CLIRunner) AppShares(ctx context.Context, appName string) (*AppShareLis
 	return runJSONPtr[AppShareList](ctx, r.exec, "app", "share", "ls", "-a", appName, "-o", "json")
 }
 
-func (r *CLIRunner) AppLogs(ctx context.Context, appName string) ([]LogEntry, error) {
-	return runJSON[[]LogEntry](ctx, r.exec, "app", "logs", "-a", appName, "--limit", "100", "-o", "json")
+// logTimeLayout is the only --start/--end format the CLI accepts. It has no
+// zone; the CLI reads it in local time, which r.now() also returns.
+const logTimeLayout = "2006-01-02T15:04:05"
+
+// runtimeLogType is the LogEntry.Type of an app's runtime logs.
+const runtimeLogType = "app"
+
+// AppLogs fetches app logs selected by opts.
+//
+// The CLI's --no-runtime flag also drops system logs (runway CLI 1.49.0), so
+// runtime entries are filtered here instead. As a result, with NoRuntime the
+// limit counts lines before filtering.
+func (r *CLIRunner) AppLogs(ctx context.Context, appName string, opts LogOptions) ([]LogEntry, error) {
+	args := []string{"app", "logs", "-a", appName}
+	if opts.NoBuild {
+		args = append(args, "--no-build")
+	}
+	if opts.NoSystem {
+		args = append(args, "--no-system")
+	}
+	if opts.Since > 0 {
+		args = append(args, "--start", r.now().Add(-opts.Since).Format(logTimeLayout))
+	}
+	limit := opts.Limit
+	if limit <= 0 {
+		limit = DefaultLogLimit
+	}
+	args = append(args, "--limit", strconv.Itoa(limit), "-o", "json")
+	logs, err := runJSON[[]LogEntry](ctx, r.exec, args...)
+	if err != nil || !opts.NoRuntime {
+		return logs, err
+	}
+	return withoutType(logs, runtimeLogType), nil
+}
+
+func withoutType(logs []LogEntry, typ string) []LogEntry {
+	kept := logs[:0:0]
+	for _, l := range logs {
+		if l.Type != typ {
+			kept = append(kept, l)
+		}
+	}
+	return kept
 }
 
 func (r *CLIRunner) AppOpen(ctx context.Context, appName string) error {

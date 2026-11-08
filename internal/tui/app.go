@@ -21,6 +21,8 @@ type Model struct {
 	// statsInterval is the stats interval shared by app and service detail
 	// views; it persists across refresh and navigation.
 	statsInterval string
+	// logOptions are the app logs filters; they persist like statsInterval.
+	logOptions runway.LogOptions
 
 	mainMenu      view.MainMenuModel
 	appList       view.AppListModel
@@ -44,6 +46,7 @@ func NewModel(runner runway.Runner) Model {
 		styles:        styles,
 		currentView:   msg.ViewMainMenu,
 		statsInterval: view.DefaultStatsInterval,
+		logOptions:    view.DefaultLogOptions,
 		mainMenu:      view.NewMainMenuModel(),
 	}
 }
@@ -64,6 +67,8 @@ func (m Model) Update(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleBack()
 	case msg.StatsIntervalMsg:
 		return m.handleStatsInterval(teaMsg)
+	case msg.LogOptionsMsg:
+		return m.handleLogOptions(teaMsg)
 	case tea.KeyMsg:
 		return m.handleGlobalKey(teaMsg)
 	}
@@ -147,6 +152,16 @@ func (m Model) handleStatsInterval(iv msg.StatsIntervalMsg) (tea.Model, tea.Cmd)
 	return m, nil
 }
 
+// handleLogOptions records new log options and refetches the current app's logs.
+func (m Model) handleLogOptions(lo msg.LogOptionsMsg) (tea.Model, tea.Cmd) {
+	m.logOptions = lo.Options
+	if m.currentView != msg.ViewAppDetail {
+		return m, nil
+	}
+	m.appDetail = m.appDetail.WithLogOptions(lo.Options)
+	return m, view.FetchAppLogs(view.CmdContext(), m.runner, m.currentParam(), lo.Options)
+}
+
 func (m Model) currentParam() string {
 	if len(m.paramStack) > 0 {
 		return m.paramStack[len(m.paramStack)-1]
@@ -181,8 +196,9 @@ func (m Model) initView(v msg.ViewID, param string) (Model, tea.Cmd) {
 		return m, view.FetchAppList(ctx, m.runner)
 	case msg.ViewAppDetail:
 		m.appDetail = view.NewAppDetailModel(param, m.styles.DetailStyles(), m.width, m.height).
-			WithStatsInterval(m.statsInterval)
-		return m, view.FetchAppDetail(ctx, m.runner, param, m.statsInterval)
+			WithStatsInterval(m.statsInterval).
+			WithLogOptions(m.logOptions)
+		return m, view.FetchAppDetail(ctx, m.runner, param, m.statsInterval, m.logOptions)
 	case msg.ViewServiceList:
 		m.serviceList = view.NewServiceListModel(m.styles.HelpBar, m.width, m.height)
 		return m, view.FetchServiceList(ctx, m.runner)

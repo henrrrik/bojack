@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 type FakeExecutor struct {
@@ -312,7 +313,7 @@ func TestAppLogs(t *testing.T) {
 		"app logs -a my-app --limit 100 -o json": []byte(appLogsJSON),
 	})
 	r := NewCLIRunner(fake)
-	logs, err := r.AppLogs(context.Background(), "my-app")
+	logs, err := r.AppLogs(context.Background(), "my-app", LogOptions{})
 	if err != nil {
 		t.Fatalf("AppLogs: %v", err)
 	}
@@ -321,6 +322,39 @@ func TestAppLogs(t *testing.T) {
 	}
 	if logs[0].Content != "2026/04/05 23:27:57 shutting down server" {
 		t.Errorf("Content = %q", logs[0].Content)
+	}
+}
+
+func TestAppLogsWithOptions(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app logs -a my-app --no-build --no-system --start 2026-11-07T22:30:00 --limit 500 -o json": []byte(appLogsJSON),
+	})
+	now := time.Date(2026, 11, 8, 0, 30, 0, 0, time.UTC)
+	r := NewCLIRunner(fake).WithClock(func() time.Time { return now })
+	_, err := r.AppLogs(context.Background(), "my-app", LogOptions{
+		Since: 2 * time.Hour, Limit: 500, NoBuild: true, NoRuntime: true, NoSystem: true,
+	})
+	if err != nil {
+		t.Fatalf("AppLogs: %v", err)
+	}
+}
+
+// The CLI's --no-runtime also drops system logs, so the runner filters
+// runtime ("app") entries itself instead of passing the flag.
+func TestAppLogsNoRuntimeFiltersClientSide(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app logs -a my-app --limit 100 -o json": []byte(`[
+			{"content": "runtime line", "time": "2026-11-01T00:00:00Z", "type": "app"},
+			{"content": "probe failed", "time": "2026-11-01T00:00:01Z", "type": "system"},
+			{"content": "building", "time": "2026-11-01T00:00:02Z", "type": "build"}
+		]`),
+	})
+	logs, err := NewCLIRunner(fake).AppLogs(context.Background(), "my-app", LogOptions{NoRuntime: true})
+	if err != nil {
+		t.Fatalf("AppLogs: %v", err)
+	}
+	if len(logs) != 2 || logs[0].Type != "system" || logs[1].Type != "build" {
+		t.Errorf("logs = %+v, want only system and build entries", logs)
 	}
 }
 

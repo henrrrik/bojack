@@ -14,13 +14,17 @@ import (
 
 var appTabs = []string{"Info", "Processes", "Stats", "Config", "Domains", "Sharing", "Logs"}
 
-const appStatsTab = 2
+const (
+	appStatsTab = 2
+	appLogsTab  = 6
+)
 
 // AppDetailModel shows app details with tabbed sections.
 type AppDetailModel struct {
 	appName       string
 	activeTab     int
 	statsInterval string
+	logOptions    runway.LogOptions
 	styles        DetailStyles
 	spinner       spinner.Model
 	width         int
@@ -45,6 +49,7 @@ func NewAppDetailModel(appName string, styles DetailStyles, width, height int) A
 	return AppDetailModel{
 		appName:       appName,
 		statsInterval: DefaultStatsInterval,
+		logOptions:    DefaultLogOptions,
 		styles:        styles,
 		spinner:       s,
 		width:         width,
@@ -61,6 +66,17 @@ func (m AppDetailModel) WithStatsInterval(interval string) AppDetailModel {
 // StatsInterval returns the interval the stats tab is showing.
 func (m AppDetailModel) StatsInterval() string {
 	return m.statsInterval
+}
+
+// WithLogOptions sets the options the logs tab is showing.
+func (m AppDetailModel) WithLogOptions(opts runway.LogOptions) AppDetailModel {
+	m.logOptions = opts
+	return m
+}
+
+// LogOptions returns the options the logs tab is showing.
+func (m AppDetailModel) LogOptions() runway.LogOptions {
+	return m.logOptions
 }
 
 func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
@@ -91,9 +107,7 @@ func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
 		m.shares = teaMsg.Shares
 		m.errors[5] = teaMsg.Err
 	case msg.AppLogsResultMsg:
-		m.loaded[6] = true
-		m.logs = teaMsg.Logs
-		m.errors[6] = teaMsg.Err
+		m = m.applyLogs(teaMsg)
 	case tea.KeyMsg:
 		return m.handleKey(teaMsg)
 	}
@@ -114,7 +128,26 @@ func (m AppDetailModel) applyStats(stats runway.Stats, interval string, err erro
 	return m
 }
 
+// applyLogs stores a logs result, ignoring stale results fetched with
+// previous options.
+func (m AppDetailModel) applyLogs(r msg.AppLogsResultMsg) AppDetailModel {
+	if r.Options != m.logOptions {
+		return m
+	}
+	m.loaded[appLogsTab] = true
+	m.logs = r.Logs
+	m.errors[appLogsTab] = r.Err
+	return m
+}
+
 func (m AppDetailModel) handleKey(k tea.KeyMsg) (AppDetailModel, tea.Cmd) {
+	if m.activeTab == appLogsTab {
+		if opts, ok := updateLogOptions(m.logOptions, k.String()); ok {
+			m.logOptions = opts
+			m.loaded[appLogsTab] = false
+			return m, requestLogOptions(opts)
+		}
+	}
 	switch k.String() {
 	case "tab":
 		m.activeTab = (m.activeTab + 1) % len(appTabs)
@@ -136,8 +169,11 @@ func (m AppDetailModel) View() string {
 	b.WriteString(m.renderTabs() + "\n\n")
 	b.WriteString(m.renderActiveTab())
 	help := []string{"tab: switch tab", "o: open", "esc: back"}
-	if m.activeTab == appStatsTab {
+	switch m.activeTab {
+	case appStatsTab:
 		help = append([]string{"i: interval"}, help...)
+	case appLogsTab:
+		help = append([]string{"a/b/s: toggle app/build/system", "t: range", "l: limit"}, help...)
 	}
 	b.WriteString("\n" + renderHelp(m.styles.HelpBar, help...))
 	return b.String()
@@ -265,10 +301,12 @@ func (m AppDetailModel) renderSharingTab() string {
 }
 
 func (m AppDetailModel) renderLogsTab() string {
-	if len(m.logs) == 0 {
-		return "No log entries."
-	}
 	var b strings.Builder
+	b.WriteString(m.styles.Value.Render(logOptionsSummary(m.logOptions)) + "\n\n")
+	if len(m.logs) == 0 {
+		b.WriteString("No log entries.\n")
+		return b.String()
+	}
 	for _, entry := range m.logs {
 		fmt.Fprintf(&b, "  %s  [%s]  %s\n", entry.Time, entry.Type, entry.Content)
 	}
