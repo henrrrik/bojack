@@ -2,7 +2,9 @@ package runway
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -388,6 +390,75 @@ func TestSSHKeyList(t *testing.T) {
 func TestAPIKeyList(t *testing.T) {
 	if got, err := listRunner().APIKeyList(context.Background()); err != nil || len(got) != 2 || got[1].Status != "REVOKED" {
 		t.Errorf("APIKeyList = %+v, %v", got, err)
+	}
+}
+
+func TestAppRestart(t *testing.T) {
+	fake := newFake(map[string][]byte{"app restart -a my-app -y": nil})
+	if err := NewCLIRunner(fake).AppRestart(context.Background(), "my-app"); err != nil {
+		t.Fatalf("AppRestart: %v", err)
+	}
+}
+
+func TestServiceRestart(t *testing.T) {
+	fake := newFake(map[string][]byte{"service restart my-db -y": nil})
+	if err := NewCLIRunner(fake).ServiceRestart(context.Background(), "my-db"); err != nil {
+		t.Fatalf("ServiceRestart: %v", err)
+	}
+}
+
+func TestExecErrorIncludesStderr(t *testing.T) {
+	e := NewExecCommandExecutor("sh")
+	_, err := e.Execute(context.Background(), "-c", "echo 'app not found' >&2; exit 1")
+	if err == nil || !strings.Contains(err.Error(), "app not found") {
+		t.Errorf("error = %v, want it to include stderr", err)
+	}
+}
+
+// Real failure output from runway CLI 1.49.0.
+const (
+	boxedErrorStdout = "ERROR running runway app restart -a nope -y: \n" +
+		"╭──────\n" +
+		"│app does not exist, or permissions are missing\n" +
+		"╰──────\n"
+	infoLogStderr   = `level=info msg="non-interactive: Restart \"nope\" with the latest configuration? ==> Yes"` + "\n"
+	jsonErrorStdout = `{
+  "action": "running runway app show -a nope -o json",
+  "error": "You do not have permission to perform this action.",
+  "status": "error"
+}`
+)
+
+func TestCLIErrorMessage(t *testing.T) {
+	tests := []struct{ name, stdout, stderr, want string }{
+		{"json", jsonErrorStdout, "", "You do not have permission to perform this action."},
+		{"boxed", boxedErrorStdout, infoLogStderr, "app does not exist, or permissions are missing"},
+		{"plain stderr", "", "boom\n", "boom"},
+		{"nothing useful", "", infoLogStderr, ""},
+	}
+	for _, tt := range tests {
+		if got := cliErrorMessage([]byte(tt.stdout), []byte(tt.stderr)); got != tt.want {
+			t.Errorf("%s: cliErrorMessage = %q, want %q", tt.name, got, tt.want)
+		}
+	}
+}
+
+func TestExecErrorUsesCLIMessage(t *testing.T) {
+	script := "printf '%s' '" + jsonErrorStdout + "'; exit 1"
+	_, err := NewExecCommandExecutor("sh").Execute(context.Background(), "-c", script)
+	if err == nil || err.Error() != "You do not have permission to perform this action." {
+		t.Fatalf("err = %v", err)
+	}
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Error("error should still wrap the *exec.ExitError")
+	}
+}
+
+func TestExecSuccessReturnsStdout(t *testing.T) {
+	out, err := NewExecCommandExecutor("sh").Execute(context.Background(), "-c", "echo hi; echo noise >&2")
+	if err != nil || strings.TrimSpace(string(out)) != "hi" {
+		t.Errorf("out = %q, err = %v", out, err)
 	}
 }
 

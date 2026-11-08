@@ -130,3 +130,16 @@ type ListResultMsg[T any] struct {
 	Items []T
 	Err   error
 }
+
+// RestartRequestMsg asks the root model to restart an app or service.
+type RestartRequestMsg struct {
+	Name    string
+	Service bool
+}
+
+// RestartResultMsg reports the outcome of a restart.
+type RestartResultMsg struct {
+	Name    string
+	Service bool
+	Err     error
+}

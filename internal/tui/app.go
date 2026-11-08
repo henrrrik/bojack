@@ -94,6 +94,10 @@ func (m Model) Update(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleStatsInterval(teaMsg)
 	case msg.LogOptionsMsg:
 		return m.handleLogOptions(teaMsg)
+	case msg.RestartRequestMsg:
+		return m, m.restartCmd(teaMsg)
+	case msg.RestartResultMsg:
+		return m.handleRestartResult(teaMsg)
 	case tea.KeyMsg:
 		return m.handleGlobalKey(teaMsg)
 	}
@@ -185,6 +189,39 @@ func (m Model) handleLogOptions(lo msg.LogOptionsMsg) (tea.Model, tea.Cmd) {
 	}
 	m.appDetail = m.appDetail.WithLogOptions(lo.Options)
 	return m, view.FetchAppLogs(view.CmdContext(), m.runner, m.currentParam(), lo.Options)
+}
+
+// restartCmd runs a restart and reports the result.
+func (m Model) restartCmd(req msg.RestartRequestMsg) tea.Cmd {
+	r := m.runner
+	return func() tea.Msg {
+		ctx := view.CmdContext()
+		var err error
+		if req.Service {
+			err = r.ServiceRestart(ctx, req.Name)
+		} else {
+			err = r.AppRestart(ctx, req.Name)
+		}
+		return msg.RestartResultMsg{Name: req.Name, Service: req.Service, Err: err}
+	}
+}
+
+// handleRestartResult passes the result to the current view and, after a
+// successful restart of what it shows, refetches its data.
+func (m Model) handleRestartResult(res msg.RestartResultMsg) (tea.Model, tea.Cmd) {
+	next, cmd := m.updateCurrentView(res)
+	m = next.(Model)
+	if res.Err != nil || res.Name != m.currentParam() {
+		return m, cmd
+	}
+	ctx := view.CmdContext()
+	switch {
+	case m.currentView == msg.ViewAppDetail && !res.Service:
+		return m, tea.Batch(cmd, view.FetchAppDetail(ctx, m.runner, res.Name, m.statsInterval, m.logOptions))
+	case m.currentView == msg.ViewServiceDetail && res.Service:
+		return m, tea.Batch(cmd, view.FetchServiceDetail(ctx, m.runner, res.Name, m.statsInterval))
+	}
+	return m, cmd
 }
 
 func (m Model) currentParam() string {
