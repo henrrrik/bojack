@@ -24,35 +24,82 @@ const (
 // if higher), so the line shows usage against the limit; warning and
 // critical thresholds are drawn as horizontal lines. Returns "" if there is
 // no data or too little room.
+func renderChart(styles DetailStyles, metric runway.StatsMetric, width, height int) string {
+	return renderCharts(styles, []runway.StatsMetric{metric}, width, height)[0]
+}
+
+// renderCharts draws one chart per metric, each width by height cells, for
+// stacking: they share their time range and label column, so the same moment
+// is in the same column in every chart. A metric without data, or a lack of
+// room, gives "".
 //
-// ntcharts draws the plot; the axes are drawn here so that each Y label is
+// ntcharts draws the plots; the axes are drawn here so that each Y label is
 // on the row that contains its value (ntcharts labels the row whose top edge
 // is the value, which makes lines look half a row off their labels).
-func renderChart(styles DetailStyles, metric runway.StatsMetric, width, height int) string {
-	if len(metric.Data) == 0 || height < 5 {
-		return ""
-	}
-	pts := sortedPoints(metric.Data)
-	start, end := pointTime(pts[0]), pointTime(pts[len(pts)-1])
-	if !end.After(start) {
-		end = start.Add(time.Minute)
-	}
-	yMax := chartYMax(metric, pts)
+func renderCharts(styles DetailStyles, metrics []runway.StatsMetric, width, height int) []string {
+	out := make([]string, len(metrics))
 	rows := height - 2 // the time axis and its labels take two rows
-	ticks := yTicks(yMax, rows)
-	labelW := 0
-	for _, t := range ticks {
-		labelW = max(labelW, len(formatStatValue(t)))
+	f, ok := newChartFrame(metrics, rows)
+	plotW := width - f.labelW - 1
+	if !ok || height < 5 || plotW < 10 {
+		return out
 	}
-	plotW := width - labelW - 1
-	if plotW < 10 {
-		return ""
+	for i, m := range metrics {
+		if len(m.Data) > 0 {
+			out[i] = drawChart(styles, m, f, plotW, rows)
+		}
 	}
-	plot := plotSeries(styles, metric, pts, start, end, yMax, plotW, rows)
+	return out
+}
+
+// chartFrame is what stacked charts share: the time range and the width of
+// the Y label column.
+type chartFrame struct {
+	start, end time.Time
+	labelW     int
+}
+
+// newChartFrame spans every metric's data; ok is false if none has any.
+func newChartFrame(metrics []runway.StatsMetric, rows int) (f chartFrame, ok bool) {
+	for _, m := range metrics {
+		if len(m.Data) == 0 {
+			continue
+		}
+		pts := sortedPoints(m.Data)
+		s, e := pointTime(pts[0]), pointTime(pts[len(pts)-1])
+		if !ok || s.Before(f.start) {
+			f.start = s
+		}
+		if !ok || e.After(f.end) {
+			f.end = e
+		}
+		ok = true
+		f.labelW = max(f.labelW, tickLabelWidth(chartYMax(m, pts), rows))
+	}
+	if ok && !f.end.After(f.start) {
+		f.end = f.start.Add(time.Minute)
+	}
+	return f, ok
+}
+
+func tickLabelWidth(yMax float64, rows int) int {
+	w := 0
+	for _, t := range yTicks(yMax, rows) {
+		w = max(w, len(formatStatValue(t)))
+	}
+	return w
+}
+
+// drawChart draws one chart within frame f: rows plot rows of plotW cells
+// with the Y labels to their left, then the time axis.
+func drawChart(styles DetailStyles, metric runway.StatsMetric, f chartFrame, plotW, rows int) string {
+	pts := sortedPoints(metric.Data)
+	yMax := chartYMax(metric, pts)
+	plot := plotSeries(styles, metric, pts, f.start, f.end, yMax, plotW, rows)
 	axis := axisStyle(styles)
 
 	labels := make([]string, rows)
-	for _, t := range ticks {
+	for _, t := range yTicks(yMax, rows) {
 		labels[tickRow(t, yMax, rows)] = formatStatValue(t)
 	}
 	var b strings.Builder
@@ -61,10 +108,10 @@ func renderChart(styles DetailStyles, metric runway.StatsMetric, width, height i
 		if labels[r] != "" {
 			edge = "┤"
 		}
-		b.WriteString(axis.Render(padLeft(labels[r], labelW)+edge) + line + "\n")
+		b.WriteString(axis.Render(padLeft(labels[r], f.labelW)+edge) + line + "\n")
 	}
-	b.WriteString(axis.Render(strings.Repeat(" ", labelW)+"└"+strings.Repeat("─", plotW)) + "\n")
-	b.WriteString(axis.Render(strings.Repeat(" ", labelW+1) + timeAxisLabels(start, end, plotW)))
+	b.WriteString(axis.Render(strings.Repeat(" ", f.labelW)+"└"+strings.Repeat("─", plotW)) + "\n")
+	b.WriteString(axis.Render(strings.Repeat(" ", f.labelW+1) + timeAxisLabels(f.start, f.end, plotW)))
 	return b.String()
 }
 

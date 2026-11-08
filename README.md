@@ -13,7 +13,8 @@ resizes, domain re-checks) always ask you to confirm first.
   Info, Processes, Stats, Config, Domains, Sharing and Logs.
 - **Stats** (apps and services): one line per metric with its latest value against the plan limit and a
   sparkline, and a braille line chart of the selected metric (`↑`/`↓`) with time and value axes, scaled from 0 to
-  the plan limit, with the warning and critical thresholds drawn in. Charts use
+  the plan limit, with the warning and critical thresholds drawn in. Pin a metric (`p`) to
+  chart it above the selected one, over the same time range, to compare them. Charts use
   [ntcharts](https://github.com/NimbleMarkets/ntcharts).
 - **Services:** details, stats (including database metrics), config, backups and DSN.
 - **Volumes, Domains, Policies, Regions, Plans, Templates, Registries, SSH Keys, API Keys:**
@@ -53,6 +54,7 @@ go run ./cmd/runway-tui
 | `enter`             | Select                       |
 | `tab` / `shift+tab` | Next / previous tab          |
 | `↑`/`↓`, `j`/`k`    | Stats tab: select the metric to chart |
+| `p`                 | Stats tab: pin the selected metric, to chart it above the selected one for comparison; again to unpin |
 | `i`                 | Cycle stats interval (1h / 6h / 24h / 7d / 30d) |
 | `f`                 | Stats / Logs tabs: follow (auto-refresh every 15s); again to stop |
 | `v`                 | Config / DSN tabs: reveal / hide secrets (hidden by default) |
