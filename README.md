@@ -11,7 +11,8 @@ command and renders the result, so it sees exactly what the CLI sees.
   Info, Processes, Stats (CPU, memory, disk and network with usage vs. plan limit and sparklines), Config, Domains,
   Sharing and Logs.
 - **Services:** details, stats (including database metrics), config, backups and DSN.
-- **Volumes, Domains, Policies, Regions, Plans:** simple tables.
+- **Volumes, Domains, Policies, Regions, Plans, Templates, Registries, SSH Keys, API Keys:**
+  simple tables. SSH keys show their `SHA256:` fingerprint, as `ssh-keygen -l` prints it.
 
 ## Requirements
 

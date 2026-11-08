@@ -358,6 +358,39 @@ func TestAppLogsNoRuntimeFiltersClientSide(t *testing.T) {
 	}
 }
 
+func listRunner() *CLIRunner {
+	return NewCLIRunner(newFake(map[string][]byte{
+		"template ls -o json": []byte(templateListJSON),
+		"registry ls -o json": []byte(registryListJSON),
+		"key ls -o json":      []byte(keyListJSON),
+		"api-key ls -o json":  []byte(apiKeyListJSON),
+	}))
+}
+
+func TestTemplateList(t *testing.T) {
+	if got, err := listRunner().TemplateList(context.Background()); err != nil || len(got) != 1 || got[0].Name != "valkey" {
+		t.Errorf("TemplateList = %+v, %v", got, err)
+	}
+}
+
+func TestRegistryList(t *testing.T) {
+	if got, err := listRunner().RegistryList(context.Background()); err != nil || len(got) != 1 || got[0].Organization != "org" {
+		t.Errorf("RegistryList = %+v, %v", got, err)
+	}
+}
+
+func TestSSHKeyList(t *testing.T) {
+	if got, err := listRunner().SSHKeyList(context.Background()); err != nil || len(got) != 1 || got[0].ID != "laptop" {
+		t.Errorf("SSHKeyList = %+v, %v", got, err)
+	}
+}
+
+func TestAPIKeyList(t *testing.T) {
+	if got, err := listRunner().APIKeyList(context.Background()); err != nil || len(got) != 2 || got[1].Status != "REVOKED" {
+		t.Errorf("APIKeyList = %+v, %v", got, err)
+	}
+}
+
 func TestExecutorError(t *testing.T) {
 	fake := &FakeExecutor{responses: map[string][]byte{}}
 	r := NewCLIRunner(fake)

@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -26,6 +27,11 @@ func (f *fakeStatsRunner) AppStats(_ context.Context, name, interval string) (ru
 func (f *fakeStatsRunner) AppLogs(_ context.Context, name string, opts runway.LogOptions) ([]runway.LogEntry, error) {
 	f.calls = append(f.calls, fmt.Sprintf("logs %s %+v", name, opts))
 	return nil, nil
+}
+
+func (f *fakeStatsRunner) TemplateList(context.Context) ([]runway.Template, error) {
+	f.calls = append(f.calls, "templates")
+	return []runway.Template{{Name: "valkey"}}, nil
 }
 
 func (f *fakeStatsRunner) ServiceStats(_ context.Context, name, interval string) (runway.Stats, error) {
@@ -212,5 +218,32 @@ func TestLogOptionsMsgFetchesLogs(t *testing.T) {
 	result, _ = result.(Model).handleNavigate(msg.NavigateMsg{View: msg.ViewAppDetail, Param: "other"})
 	if got := result.(Model).appDetail.LogOptions(); got != opts {
 		t.Errorf("next app detail options = %+v, want %+v", got, opts)
+	}
+}
+
+func TestNavigateToListViewFetchesAndRenders(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewTemplateList})
+	m := result.(Model)
+	if v := m.View(); !strings.Contains(v, "Fetching templates") {
+		t.Errorf("view = %q, want loading", v)
+	}
+	if cmd == nil {
+		t.Fatal("expected fetch command")
+	}
+	result, _ = m.Update(cmd())
+	if v := result.(Model).View(); !strings.Contains(v, "valkey") {
+		t.Errorf("view = %q, want template row", v)
+	}
+	if len(fake.calls) != 1 || fake.calls[0] != "templates" {
+		t.Errorf("calls = %v", fake.calls)
+	}
+}
+
+func TestAllListViewsRegistered(t *testing.T) {
+	for _, v := range []msg.ViewID{msg.ViewTemplateList, msg.ViewRegistryList, msg.ViewSSHKeyList, msg.ViewAPIKeyList} {
+		if _, ok := listViews[v]; !ok {
+			t.Errorf("view %d not registered", v)
+		}
 	}
 }

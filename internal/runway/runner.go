@@ -35,6 +35,10 @@ type Runner interface {
 	PolicyList(ctx context.Context) ([]Policy, error)
 	RegionList(ctx context.Context) ([]Region, error)
 	PlanList(ctx context.Context) ([]Plan, error)
+	TemplateList(ctx context.Context) ([]Template, error)
+	RegistryList(ctx context.Context) ([]Registry, error)
+	SSHKeyList(ctx context.Context) ([]SSHKey, error)
+	APIKeyList(ctx context.Context) ([]APIKey, error)
 }
 
 // ExecCommandExecutor implements CommandExecutor using os/exec.
@@ -194,6 +198,22 @@ func (r *CLIRunner) RegionList(ctx context.Context) ([]Region, error) {
 
 func (r *CLIRunner) PlanList(ctx context.Context) ([]Plan, error) {
 	return runJSON[[]Plan](ctx, r.exec, "plan", "ls", "-o", "json")
+}
+
+func (r *CLIRunner) TemplateList(ctx context.Context) ([]Template, error) {
+	return runJSON[[]Template](ctx, r.exec, "template", "ls", "-o", "json")
+}
+
+func (r *CLIRunner) RegistryList(ctx context.Context) ([]Registry, error) {
+	return runJSON[[]Registry](ctx, r.exec, "registry", "ls", "-o", "json")
+}
+
+func (r *CLIRunner) SSHKeyList(ctx context.Context) ([]SSHKey, error) {
+	return runJSON[[]SSHKey](ctx, r.exec, "key", "ls", "-o", "json")
+}
+
+func (r *CLIRunner) APIKeyList(ctx context.Context) ([]APIKey, error) {
+	return runJSON[[]APIKey](ctx, r.exec, "api-key", "ls", "-o", "json")
 }
 
 func runJSON[T any](ctx context.Context, exec CommandExecutor, args ...string) (T, error) {

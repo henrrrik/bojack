@@ -63,3 +63,12 @@ func TestMainMenuSelect(t *testing.T) {
 		t.Errorf("View = %d, want ViewAppList", nav.View)
 	}
 }
+
+func TestMainMenuHasAccountLists(t *testing.T) {
+	v := NewMainMenuModel().View()
+	for _, want := range []string{"Templates", "Registries", "SSH Keys", "API Keys"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("menu should contain %q", want)
+		}
+	}
+}
