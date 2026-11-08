@@ -295,3 +295,45 @@ type Plan struct {
 	StorageUpgrades bool    `json:"storage_upgrades"`
 	Permutation     string  `json:"permutation"`
 }
+
+// Template is one entry from "template ls -o json".
+type Template struct {
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	Description string   `json:"description"`
+	Category    string   `json:"category"`
+	Maintainer  string   `json:"maintainer"`
+	MinPlan     string   `json:"minPlan"`
+	Latest      string   `json:"latest"`
+	Versions    []string `json:"versions"`
+}
+
+// Registry is one entry from "registry ls -o json".
+type Registry struct {
+	Hostname     string `json:"hostname"`
+	Organization string `json:"organization"`
+	Username     string `json:"username"`
+	Managed      bool   `json:"managed"`
+	UUID         string `json:"uuid"`
+}
+
+// SSHKey is one deploy key from "key ls -o json".
+type SSHKey struct {
+	ID      string `json:"id"`
+	UUID    string `json:"uuid"`
+	Owner   string `json:"owner"`
+	Public  string `json:"public"` // authorized_keys format
+	Created string `json:"created"`
+	Updated string `json:"updated"`
+}
+
+// APIKey is one entry from "api-key ls -o json". LastUsed is empty if the
+// key has never been used.
+type APIKey struct {
+	KeyID    string `json:"key_id"`
+	Name     string `json:"name"`
+	Status   string `json:"status"`
+	Created  string `json:"created"`
+	Expires  string `json:"expires"`
+	LastUsed string `json:"last_used"`
+}

@@ -34,6 +34,28 @@ type Model struct {
 	policyList    view.PolicyListModel
 	regionList    view.RegionListModel
 	planList      view.PlanListModel
+	// list is the current generic list view (see listViews).
+	list view.Viewer
+}
+
+// listViews builds the generic list views and the command that fills them.
+var listViews = map[msg.ViewID]func(m Model) (view.Viewer, tea.Cmd){
+	msg.ViewTemplateList: func(m Model) (view.Viewer, tea.Cmd) {
+		return view.NewTemplateListModel(m.styles.HelpBar, m.width, m.height),
+			view.FetchList(view.CmdContext(), m.runner.TemplateList)
+	},
+	msg.ViewRegistryList: func(m Model) (view.Viewer, tea.Cmd) {
+		return view.NewRegistryListModel(m.styles.HelpBar, m.width, m.height),
+			view.FetchList(view.CmdContext(), m.runner.RegistryList)
+	},
+	msg.ViewSSHKeyList: func(m Model) (view.Viewer, tea.Cmd) {
+		return view.NewSSHKeyListModel(m.styles.HelpBar, m.width, m.height),
+			view.FetchList(view.CmdContext(), m.runner.SSHKeyList)
+	},
+	msg.ViewAPIKeyList: func(m Model) (view.Viewer, tea.Cmd) {
+		return view.NewAPIKeyListModel(m.styles.HelpBar, m.width, m.height),
+			view.FetchList(view.CmdContext(), m.runner.APIKeyList)
+	},
 }
 
 // NewModel creates the root model.
@@ -77,6 +99,8 @@ func (m Model) Update(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	switch m.currentView {
+	case msg.ViewMainMenu:
+		return m.mainMenu.View()
 	case msg.ViewAppList:
 		return m.appList.View()
 	case msg.ViewAppDetail:
@@ -85,6 +109,17 @@ func (m Model) View() string {
 		return m.serviceList.View()
 	case msg.ViewServiceDetail:
 		return m.serviceDetail.View()
+	default:
+		return m.viewLeaf()
+	}
+}
+
+// viewLeaf renders the simple list views.
+func (m Model) viewLeaf() string {
+	if _, ok := listViews[m.currentView]; ok && m.list != nil {
+		return m.list.View()
+	}
+	switch m.currentView {
 	case msg.ViewVolumeList:
 		return m.volumeList.View()
 	case msg.ViewDomainList:
@@ -189,6 +224,11 @@ func (m Model) handleBack() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) initView(v msg.ViewID, param string) (Model, tea.Cmd) {
+	if build, ok := listViews[v]; ok {
+		var cmd tea.Cmd
+		m.list, cmd = build(m)
+		return m, cmd
+	}
 	ctx := view.CmdContext()
 	switch v {
 	case msg.ViewAppList:
@@ -206,6 +246,14 @@ func (m Model) initView(v msg.ViewID, param string) (Model, tea.Cmd) {
 		m.serviceDetail = view.NewServiceDetailModel(param, m.styles.DetailStyles(), m.width, m.height).
 			WithStatsInterval(m.statsInterval)
 		return m, view.FetchServiceDetail(ctx, m.runner, param, m.statsInterval)
+	}
+	return m.initLeafView(v)
+}
+
+// initLeafView creates a simple list view and returns the command that fills it.
+func (m Model) initLeafView(v msg.ViewID) (Model, tea.Cmd) {
+	ctx := view.CmdContext()
+	switch v {
 	case msg.ViewVolumeList:
 		m.volumeList = view.NewVolumeListModel(m.styles.HelpBar, m.width, m.height)
 		return m, view.FetchVolumeList(ctx, m.runner)
@@ -246,6 +294,10 @@ func (m Model) updateCurrentView(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) updateLeafView(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	if _, ok := listViews[m.currentView]; ok && m.list != nil {
+		m.list, cmd = m.list.Update(teaMsg)
+		return m, cmd
+	}
 	switch m.currentView {
 	case msg.ViewVolumeList:
 		m.volumeList, cmd = m.volumeList.Update(teaMsg)

@@ -20,6 +20,10 @@ var menuItems = []menuItem{
 	{"Policies", "Manage policies", msg.ViewPolicyList},
 	{"Regions", "See available regions", msg.ViewRegionList},
 	{"Plans", "See available plans", msg.ViewPlanList},
+	{"Templates", "See available app templates", msg.ViewTemplateList},
+	{"Registries", "See container registries", msg.ViewRegistryList},
+	{"SSH Keys", "See deploy SSH keys", msg.ViewSSHKeyList},
+	{"API Keys", "See API keys", msg.ViewAPIKeyList},
 }
 
 // MainMenuModel is the main menu view.

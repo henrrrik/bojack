@@ -696,3 +696,74 @@ func TestUnmarshalPlanList(t *testing.T) {
 		t.Error("Persistency should be true")
 	}
 }
+
+const templateListJSON = `[
+  {"name": "valkey", "latest": "0.2.0", "versions": ["0.1.1", "0.2.0"], "displayName": "Valkey",
+   "description": "In-memory key-value store.", "category": "cache", "maintainer": "runway", "minPlan": "free-launch"}
+]`
+
+const registryListJSON = `[
+  {"hostname": "https://r.example.com/org", "managed": true, "organization": "org", "username": "robot", "uuid": "b3c1"}
+]`
+
+const keyListJSON = `[
+  {"id": "laptop", "uuid": "a1b2", "owner": "me", "created": "2026-04-03T18:00:13Z", "updated": "2026-04-03T18:00:13Z",
+   "public": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPYs8cCE74KXqXajjjp+FLgaQVmH6NvBu6HO93INnLG8"}
+]`
+
+const apiKeyListJSON = `[
+  {"key_id": "1adc", "name": "github-deployment", "status": "ACTIVE", "created": "2026-09-01T19:29:29.98926476Z",
+   "expires": "2027-09-01T19:29:29.989236284Z", "last_used": "2026-09-06T20:46:35.460103782Z"},
+  {"key_id": "90bf", "name": "old", "status": "REVOKED", "created": "2026-09-01T19:29:07Z",
+   "expires": "2027-09-01T19:29:07Z", "last_used": null}
+]`
+
+func TestUnmarshalTemplates(t *testing.T) {
+	var got []Template
+	if err := json.Unmarshal([]byte(templateListJSON), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	want := Template{Name: "valkey", DisplayName: "Valkey", Description: "In-memory key-value store.", Category: "cache",
+		Maintainer: "runway", MinPlan: "free-launch", Latest: "0.2.0", Versions: []string{"0.1.1", "0.2.0"}}
+	if len(got) != 1 || !reflect.DeepEqual(got[0], want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestUnmarshalRegistries(t *testing.T) {
+	var got []Registry
+	if err := json.Unmarshal([]byte(registryListJSON), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	want := Registry{Hostname: "https://r.example.com/org", Organization: "org", Username: "robot", Managed: true, UUID: "b3c1"}
+	if len(got) != 1 || got[0] != want {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestUnmarshalSSHKeys(t *testing.T) {
+	var got []SSHKey
+	if err := json.Unmarshal([]byte(keyListJSON), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != "laptop" || got[0].Created != "2026-04-03T18:00:13Z" ||
+		!strings.HasPrefix(got[0].Public, "ssh-ed25519 ") {
+		t.Errorf("got %+v", got)
+	}
+}
+
+func TestUnmarshalAPIKeys(t *testing.T) {
+	var got []APIKey
+	if err := json.Unmarshal([]byte(apiKeyListJSON), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d, want 2", len(got))
+	}
+	if got[0].Name != "github-deployment" || got[0].Status != "ACTIVE" || got[0].LastUsed == "" || got[0].KeyID != "1adc" {
+		t.Errorf("got[0] = %+v", got[0])
+	}
+	if got[1].LastUsed != "" {
+		t.Errorf("null last_used should decode to empty, got %q", got[1].LastUsed)
+	}
+}

@@ -20,6 +20,10 @@ const (
 	ViewPolicyList
 	ViewRegionList
 	ViewPlanList
+	ViewTemplateList
+	ViewRegistryList
+	ViewSSHKeyList
+	ViewAPIKeyList
 )
 
 // NavigateMsg requests a view transition.
@@ -143,5 +147,11 @@ type RegionListResultMsg struct {
 
 type PlanListResultMsg struct {
 	Plans []runway.Plan
+	Err   error
+}
+
+// ListResultMsg carries the result of a list fetch for a generic list view.
+type ListResultMsg[T any] struct {
+	Items []T
 	Err   error
 }
