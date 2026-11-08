@@ -18,7 +18,8 @@ First release. Checked against runway CLI 1.49.0.
 - Stats for apps and services: an overview line per metric (latest value
   against the plan limit, plus a sparkline) and a line chart of the selected
   metric with time and value axes and the warning/critical thresholds. Intervals
-  from 1h to 30d.
+  from 1h to 30d. Pin a metric (`p`) to chart it above another, over the same
+  time range, to compare them.
 - Logs: filter by app, build and system logs, time range and line limit.
 - Follow mode (`f`) auto-refreshes stats and logs every 15 seconds.
 - Lists for volumes, domains, policies, regions, plans, templates, registries,
@@ -27,6 +28,7 @@ First release. Checked against runway CLI 1.49.0.
 - Actions, each behind a confirmation: restart an app or service, create a
   service backup, re-check domain verification, set or remove app and service
   config keys, move an app to another plan and grow a volume.
+- Click a tab to switch to it.
 - `--version` flag.
 - Release binaries for Linux, macOS and Windows.
 
