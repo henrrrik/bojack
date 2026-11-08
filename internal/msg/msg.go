@@ -125,31 +125,6 @@ type ServiceBackupsResultMsg struct {
 	Err     error
 }
 
-type VolumeListResultMsg struct {
-	Volumes []runway.Volume
-	Err     error
-}
-
-type DomainListResultMsg struct {
-	Domains []runway.RootDomain
-	Err     error
-}
-
-type PolicyListResultMsg struct {
-	Policies []runway.Policy
-	Err      error
-}
-
-type RegionListResultMsg struct {
-	Regions []runway.Region
-	Err     error
-}
-
-type PlanListResultMsg struct {
-	Plans []runway.Plan
-	Err   error
-}
-
 // ListResultMsg carries the result of a list fetch for a generic list view.
 type ListResultMsg[T any] struct {
 	Items []T
