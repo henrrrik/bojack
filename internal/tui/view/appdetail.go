@@ -24,7 +24,7 @@ type AppDetailModel struct {
 	appName       string
 	activeTab     int
 	statsInterval string
-	restart       restartPrompt
+	actions       actionPrompt
 	logOptions    runway.LogOptions
 	revealSecrets bool
 	styles        DetailStyles
@@ -51,7 +51,7 @@ func NewAppDetailModel(appName string, styles DetailStyles, width, height int) A
 	return AppDetailModel{
 		appName:       appName,
 		statsInterval: DefaultStatsInterval,
-		restart:       newRestartPrompt(appName, false),
+		actions:       newActionPrompt(restartAppAction),
 		logOptions:    DefaultLogOptions,
 		styles:        styles,
 		spinner:       s,
@@ -87,8 +87,8 @@ func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = teaMsg.Width
 		m.height = teaMsg.Height
-	case msg.RestartResultMsg:
-		m.restart = m.restart.apply(teaMsg)
+	case msg.ActionResultMsg:
+		m.actions = m.actions.apply(teaMsg)
 	case tea.KeyMsg:
 		return m.handleKey(teaMsg)
 	default:
@@ -145,8 +145,8 @@ func (m AppDetailModel) applyLogs(r msg.AppLogsResultMsg) AppDetailModel {
 }
 
 func (m AppDetailModel) handleKey(k tea.KeyMsg) (AppDetailModel, tea.Cmd) {
-	if p, cmd, ok := m.restart.handleKey(k.String()); ok {
-		m.restart = p
+	if p, cmd, ok := m.actions.handleKey(k.String(), m.appName); ok {
+		m.actions = p
 		return m, cmd
 	}
 	if m.activeTab == appLogsTab {
@@ -179,8 +179,9 @@ func (m AppDetailModel) View() string {
 	var b strings.Builder
 	b.WriteString(m.styles.Title.Render("App: "+m.appName) + "\n\n")
 	b.WriteString(m.renderTabs() + "\n\n")
-	b.WriteString(m.restart.withStatus(m.renderActiveTab(), m.styles))
-	help := []string{"tab: switch tab", "o: open", "R: restart", "esc: back"}
+	b.WriteString(m.actions.withStatus(m.renderActiveTab(), m.styles))
+	help := append([]string{"tab: switch tab", "o: open"}, m.actions.help()...)
+	help = append(help, "esc: back")
 	switch m.activeTab {
 	case appStatsTab:
 		help = append([]string{"i: interval"}, help...)

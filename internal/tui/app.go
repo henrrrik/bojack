@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 	"github.com/henrrrik/runway-tui/internal/tui/view"
@@ -34,8 +33,8 @@ type Model struct {
 	list view.Viewer
 }
 
-// listViews builds the generic list views and the command that fills them.
-var listViews = map[msg.ViewID]func(m Model) (view.Viewer, tea.Cmd){
+// listViews describes the generic list views.
+var listViews = map[msg.ViewID]listEntry{
 	msg.ViewAppList:      listView(view.NewAppListModel, runway.Runner.AppList),
 	msg.ViewServiceList:  listView(view.NewServiceListModel, runway.Runner.ServiceList),
 	msg.ViewVolumeList:   listView(view.NewVolumeListModel, runway.Runner.VolumeList),
@@ -49,16 +48,33 @@ var listViews = map[msg.ViewID]func(m Model) (view.Viewer, tea.Cmd){
 	msg.ViewAPIKeyList:   listView(view.NewAPIKeyListModel, runway.Runner.APIKeyList),
 }
 
+// listEntry builds a list view and, separately, the command that (re)fills
+// it, so a list can be refetched without being rebuilt.
+type listEntry struct {
+	build func(Model) view.Viewer
+	fetch func(Model) tea.Cmd
+}
+
 // listView pairs a list view constructor with the Runner method that fills it.
 func listView[T any](
-	newModel func(lipgloss.Style, int, int) view.ListModel[T],
+	newModel func(view.DetailStyles, int, int) view.ListModel[T],
 	fetch func(runway.Runner, context.Context) ([]T, error),
-) func(Model) (view.Viewer, tea.Cmd) {
-	return func(m Model) (view.Viewer, tea.Cmd) {
-		r := m.runner
-		return newModel(m.styles.HelpBar, m.width, m.height),
-			view.FetchList(view.CmdContext(), func(ctx context.Context) ([]T, error) { return fetch(r, ctx) })
+) listEntry {
+	return listEntry{
+		build: func(m Model) view.Viewer { return newModel(m.styles.DetailStyles(), m.width, m.height) },
+		fetch: func(m Model) tea.Cmd {
+			r := m.runner
+			return view.FetchList(view.CmdContext(), func(ctx context.Context) ([]T, error) { return fetch(r, ctx) })
+		},
 	}
+}
+
+// actionRunners maps each action to the Runner method that performs it.
+var actionRunners = map[msg.ActionKind]func(runway.Runner, context.Context, string) error{
+	msg.ActionRestartApp:     runway.Runner.AppRestart,
+	msg.ActionRestartService: runway.Runner.ServiceRestart,
+	msg.ActionCreateBackup:   runway.Runner.ServiceBackupCreate,
+	msg.ActionVerifyDomain:   runway.Runner.DomainVerify,
 }
 
 // NewModel creates the root model.
@@ -94,10 +110,10 @@ func (m Model) Update(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleStatsInterval(teaMsg)
 	case msg.LogOptionsMsg:
 		return m.handleLogOptions(teaMsg)
-	case msg.RestartRequestMsg:
-		return m, m.restartCmd(teaMsg)
-	case msg.RestartResultMsg:
-		return m.handleRestartResult(teaMsg)
+	case msg.ActionRequestMsg:
+		return m, m.actionCmd(teaMsg)
+	case msg.ActionResultMsg:
+		return m.handleActionResult(teaMsg)
 	case tea.KeyMsg:
 		return m.handleGlobalKey(teaMsg)
 	}
@@ -187,37 +203,38 @@ func (m Model) handleLogOptions(lo msg.LogOptionsMsg) (tea.Model, tea.Cmd) {
 	return m, view.FetchAppLogs(view.CmdContext(), m.runner, m.currentParam(), lo.Options)
 }
 
-// restartCmd runs a restart and reports the result.
-func (m Model) restartCmd(req msg.RestartRequestMsg) tea.Cmd {
-	r := m.runner
+// actionCmd runs an action and reports the result.
+func (m Model) actionCmd(req msg.ActionRequestMsg) tea.Cmd {
+	r, run := m.runner, actionRunners[req.Kind]
 	return func() tea.Msg {
-		ctx := view.CmdContext()
-		var err error
-		if req.Service {
-			err = r.ServiceRestart(ctx, req.Name)
-		} else {
-			err = r.AppRestart(ctx, req.Name)
-		}
-		return msg.RestartResultMsg{Name: req.Name, Service: req.Service, Err: err}
+		return msg.ActionResultMsg{Kind: req.Kind, Target: req.Target, Err: run(r, view.CmdContext(), req.Target)}
 	}
 }
 
-// handleRestartResult passes the result to the current view and, after a
-// successful restart of what it shows, refetches its data.
-func (m Model) handleRestartResult(res msg.RestartResultMsg) (tea.Model, tea.Cmd) {
+// handleActionResult passes the result to the current view and, after a
+// success, refetches the view's data so it reflects the change.
+func (m Model) handleActionResult(res msg.ActionResultMsg) (tea.Model, tea.Cmd) {
 	next, cmd := m.updateCurrentView(res)
 	m = next.(Model)
-	if res.Err != nil || res.Name != m.currentParam() {
+	if res.Err != nil {
 		return m, cmd
 	}
-	ctx := view.CmdContext()
-	switch {
-	case m.currentView == msg.ViewAppDetail && !res.Service:
-		return m, tea.Batch(cmd, view.FetchAppDetail(ctx, m.runner, res.Name, m.statsInterval, m.logOptions))
-	case m.currentView == msg.ViewServiceDetail && res.Service:
-		return m, tea.Batch(cmd, view.FetchServiceDetail(ctx, m.runner, res.Name, m.statsInterval))
+	return m, tea.Batch(cmd, m.refetchCurrent())
+}
+
+// refetchCurrent reloads the current view's data without rebuilding it.
+func (m Model) refetchCurrent() tea.Cmd {
+	ctx, param := view.CmdContext(), m.currentParam()
+	switch m.currentView {
+	case msg.ViewAppDetail:
+		return view.FetchAppDetail(ctx, m.runner, param, m.statsInterval, m.logOptions)
+	case msg.ViewServiceDetail:
+		return view.FetchServiceDetail(ctx, m.runner, param, m.statsInterval)
 	}
-	return m, cmd
+	if e, ok := listViews[m.currentView]; ok {
+		return e.fetch(m)
+	}
+	return nil
 }
 
 func (m Model) currentParam() string {
@@ -247,10 +264,9 @@ func (m Model) handleBack() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) initView(v msg.ViewID, param string) (Model, tea.Cmd) {
-	if build, ok := listViews[v]; ok {
-		var cmd tea.Cmd
-		m.list, cmd = build(m)
-		return m, cmd
+	if e, ok := listViews[v]; ok {
+		m.list = e.build(m)
+		return m, e.fetch(m)
 	}
 	ctx := view.CmdContext()
 	switch v {

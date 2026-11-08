@@ -28,6 +28,8 @@ type Runner interface {
 	AppOpen(ctx context.Context, appName string) error
 	AppRestart(ctx context.Context, appName string) error
 	ServiceRestart(ctx context.Context, name string) error
+	ServiceBackupCreate(ctx context.Context, name string) error
+	DomainVerify(ctx context.Context, domain string) error
 	ServiceList(ctx context.Context) ([]Service, error)
 	ServiceShow(ctx context.Context, name string) (*Service, error)
 	ServiceDSN(ctx context.Context, name string) (ServiceDSN, error)
@@ -204,6 +206,18 @@ func (r *CLIRunner) AppRestart(ctx context.Context, appName string) error {
 // ServiceRestart restarts a service. -y keeps the CLI from prompting.
 func (r *CLIRunner) ServiceRestart(ctx context.Context, name string) error {
 	_, err := r.exec.Execute(ctx, "service", "restart", name, "-y")
+	return err
+}
+
+// ServiceBackupCreate starts a backup of a service.
+func (r *CLIRunner) ServiceBackupCreate(ctx context.Context, name string) error {
+	_, err := r.exec.Execute(ctx, "service", "backup", "create", name, "-y")
+	return err
+}
+
+// DomainVerify re-runs the verification check of a root domain.
+func (r *CLIRunner) DomainVerify(ctx context.Context, domain string) error {
+	_, err := r.exec.Execute(ctx, "domain", "verify", domain, "-y")
 	return err
 }
 

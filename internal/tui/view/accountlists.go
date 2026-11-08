@@ -6,19 +6,18 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
 // NewTemplateListModel lists app templates.
-func NewTemplateListModel(helpBar lipgloss.Style, width, height int) ListModel[runway.Template] {
+func NewTemplateListModel(styles DetailStyles, width, height int) ListModel[runway.Template] {
 	return NewListModel("templates", []table.Column{
 		{Title: "Name", Width: 16},
 		{Title: "Category", Width: 12},
 		{Title: "Latest", Width: 8},
 		{Title: "Min Plan", Width: 16},
 		{Title: "Description", Width: 50},
-	}, templateRow, helpBar, width, height)
+	}, templateRow, styles, width, height)
 }
 
 func templateRow(t runway.Template) table.Row {
@@ -26,13 +25,13 @@ func templateRow(t runway.Template) table.Row {
 }
 
 // NewRegistryListModel lists container registries.
-func NewRegistryListModel(helpBar lipgloss.Style, width, height int) ListModel[runway.Registry] {
+func NewRegistryListModel(styles DetailStyles, width, height int) ListModel[runway.Registry] {
 	return NewListModel("registries", []table.Column{
 		{Title: "Hostname", Width: 60},
 		{Title: "Organization", Width: 28},
 		{Title: "Username", Width: 20},
 		{Title: "Managed", Width: 8},
-	}, registryRow, helpBar, width, height)
+	}, registryRow, styles, width, height)
 }
 
 func registryRow(r runway.Registry) table.Row {
@@ -44,13 +43,13 @@ func registryRow(r runway.Registry) table.Row {
 }
 
 // NewSSHKeyListModel lists SSH deploy keys.
-func NewSSHKeyListModel(helpBar lipgloss.Style, width, height int) ListModel[runway.SSHKey] {
+func NewSSHKeyListModel(styles DetailStyles, width, height int) ListModel[runway.SSHKey] {
 	return NewListModel("SSH keys", []table.Column{
 		{Title: "ID", Width: 36},
 		{Title: "Type", Width: 20},
 		{Title: "Fingerprint", Width: 51},
 		{Title: "Created", Width: 10},
-	}, sshKeyRow, helpBar, width, height)
+	}, sshKeyRow, styles, width, height)
 }
 
 func sshKeyRow(k runway.SSHKey) table.Row {
@@ -77,14 +76,14 @@ func sshFingerprint(public string) string {
 }
 
 // NewAPIKeyListModel lists API keys.
-func NewAPIKeyListModel(helpBar lipgloss.Style, width, height int) ListModel[runway.APIKey] {
+func NewAPIKeyListModel(styles DetailStyles, width, height int) ListModel[runway.APIKey] {
 	return NewListModel("API keys", []table.Column{
 		{Title: "Name", Width: 24},
 		{Title: "Status", Width: 10},
 		{Title: "Created", Width: 10},
 		{Title: "Expires", Width: 10},
 		{Title: "Last Used", Width: 10},
-	}, apiKeyRow, helpBar, width, height)
+	}, apiKeyRow, styles, width, height)
 }
 
 func apiKeyRow(k runway.APIKey) table.Row {

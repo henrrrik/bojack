@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -19,7 +18,7 @@ func assertRow(t *testing.T, got, want table.Row) {
 }
 
 func TestVolumeListShowsSize(t *testing.T) {
-	var v Viewer = NewVolumeListModel(lipgloss.NewStyle(), 120, 24)
+	var v Viewer = NewVolumeListModel(testDetailStyles(), 120, 24)
 	v, _ = v.Update(msg.ListResultMsg[runway.Volume]{
 		Items: []runway.Volume{{Name: "data", App: "my-db", Mountpoint: "/data", SizeMB: 5120}},
 	})
@@ -39,8 +38,9 @@ func TestVolumeRow(t *testing.T) {
 }
 
 func TestDomainRow(t *testing.T) {
-	assertRow(t, domainRow(runway.RootDomain{Domain: "example.com", Owner: "me", Verified: true}),
-		table.Row{"example.com", "me", "true"})
+	assertRow(t, domainRow(runway.RootDomain{Domain: "example.com", Owner: "me", Verified: true,
+		LastCheck: "2026-11-06T00:00:02.59768Z", LastCheckMsg: "ok"}),
+		table.Row{"example.com", "me", "true", "2026-11-06", "ok"})
 }
 
 func TestPolicyRow(t *testing.T) {

@@ -28,7 +28,7 @@ type ServiceDetailModel struct {
 	name          string
 	activeTab     int
 	statsInterval string
-	restart       restartPrompt
+	actions       actionPrompt
 	revealSecrets bool
 	styles        DetailStyles
 	spinner       spinner.Model
@@ -52,7 +52,7 @@ func NewServiceDetailModel(name string, styles DetailStyles, width, height int) 
 	return ServiceDetailModel{
 		name:          name,
 		statsInterval: DefaultStatsInterval,
-		restart:       newRestartPrompt(name, true),
+		actions:       newActionPrompt(restartServiceAction, createBackupAction),
 		styles:        styles,
 		spinner:       s,
 		width:         width,
@@ -94,8 +94,8 @@ func (m ServiceDetailModel) Update(teaMsg tea.Msg) (ServiceDetailModel, tea.Cmd)
 		m.loaded[serviceDSNTab] = true
 		m.dsn = teaMsg.DSN
 		m.errors[serviceDSNTab] = teaMsg.Err
-	case msg.RestartResultMsg:
-		m.restart = m.restart.apply(teaMsg)
+	case msg.ActionResultMsg:
+		m.actions = m.actions.apply(teaMsg)
 	case tea.KeyMsg:
 		return m.handleKey(teaMsg)
 	}
@@ -117,8 +117,8 @@ func (m ServiceDetailModel) applyStats(stats runway.Stats, interval string, err 
 }
 
 func (m ServiceDetailModel) handleKey(k tea.KeyMsg) (ServiceDetailModel, tea.Cmd) {
-	if p, cmd, ok := m.restart.handleKey(k.String()); ok {
-		m.restart = p
+	if p, cmd, ok := m.actions.handleKey(k.String(), m.name); ok {
+		m.actions = p
 		return m, cmd
 	}
 	switch k.String() {
@@ -144,8 +144,9 @@ func (m ServiceDetailModel) View() string {
 	var b strings.Builder
 	b.WriteString(m.styles.Title.Render("Service: "+m.name) + "\n\n")
 	b.WriteString(m.renderTabs() + "\n\n")
-	b.WriteString(m.restart.withStatus(m.renderActiveTab(), m.styles))
-	help := []string{"tab: switch tab", "R: restart", "esc: back"}
+	b.WriteString(m.actions.withStatus(m.renderActiveTab(), m.styles))
+	help := append([]string{"tab: switch tab"}, m.actions.help()...)
+	help = append(help, "esc: back")
 	switch m.activeTab {
 	case serviceStatsTab:
 		help = append([]string{"i: interval"}, help...)
