@@ -383,7 +383,7 @@ func TestUnmarshalProcessList(t *testing.T) {
 }
 
 func TestUnmarshalAppStats(t *testing.T) {
-	var stats AppStats
+	var stats Stats
 	if err := json.Unmarshal([]byte(appStatsJSON), &stats); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
@@ -429,8 +429,8 @@ func TestStatsMetricValues(t *testing.T) {
 	}
 }
 
-func TestAppStatsOrderedKeys(t *testing.T) {
-	stats := AppStats{
+func TestStatsOrderedKeys(t *testing.T) {
+	stats := Stats{
 		"net_out": {}, "zzz_custom": {}, "ram": {}, "hdd_ephemeral_worker": {},
 		"net_in": {}, "cpu": {}, "hdd_ephemeral_app": {},
 	}

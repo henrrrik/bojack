@@ -2,9 +2,7 @@ package view
 
 import (
 	"fmt"
-	"math"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -16,18 +14,21 @@ import (
 
 var appTabs = []string{"Info", "Processes", "Stats", "Config", "Domains", "Sharing", "Logs"}
 
+const appStatsTab = 2
+
 // AppDetailModel shows app details with tabbed sections.
 type AppDetailModel struct {
-	appName   string
-	activeTab int
-	styles    DetailStyles
-	spinner   spinner.Model
-	width     int
-	height    int
+	appName       string
+	activeTab     int
+	statsInterval string
+	styles        DetailStyles
+	spinner       spinner.Model
+	width         int
+	height        int
 
 	detail    *runway.AppDetail
 	processes []runway.Process
-	stats     runway.AppStats
+	stats     runway.Stats
 	config    runway.AppConfig
 	domains   []runway.Domain
 	shares    *runway.AppShareList
@@ -42,12 +43,24 @@ func NewAppDetailModel(appName string, styles DetailStyles, width, height int) A
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return AppDetailModel{
-		appName: appName,
-		styles:  styles,
-		spinner: s,
-		width:   width,
-		height:  height,
+		appName:       appName,
+		statsInterval: DefaultStatsInterval,
+		styles:        styles,
+		spinner:       s,
+		width:         width,
+		height:        height,
 	}
+}
+
+// WithStatsInterval sets the interval the stats tab is showing.
+func (m AppDetailModel) WithStatsInterval(interval string) AppDetailModel {
+	m.statsInterval = interval
+	return m
+}
+
+// StatsInterval returns the interval the stats tab is showing.
+func (m AppDetailModel) StatsInterval() string {
+	return m.statsInterval
 }
 
 func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
@@ -64,9 +77,7 @@ func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
 		m.processes = teaMsg.Processes
 		m.errors[1] = teaMsg.Err
 	case msg.AppStatsResultMsg:
-		m.loaded[2] = true
-		m.stats = teaMsg.Stats
-		m.errors[2] = teaMsg.Err
+		m = m.applyStats(teaMsg.Stats, teaMsg.Interval, teaMsg.Err)
 	case msg.AppConfigResultMsg:
 		m.loaded[3] = true
 		m.config = teaMsg.Config
@@ -91,12 +102,30 @@ func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
 	return m, cmd
 }
 
+// applyStats stores a stats result, ignoring stale results fetched for a
+// previous interval.
+func (m AppDetailModel) applyStats(stats runway.Stats, interval string, err error) AppDetailModel {
+	if interval != m.statsInterval {
+		return m
+	}
+	m.loaded[appStatsTab] = true
+	m.stats = stats
+	m.errors[appStatsTab] = err
+	return m
+}
+
 func (m AppDetailModel) handleKey(k tea.KeyMsg) (AppDetailModel, tea.Cmd) {
 	switch k.String() {
 	case "tab":
 		m.activeTab = (m.activeTab + 1) % len(appTabs)
 	case "shift+tab":
 		m.activeTab = (m.activeTab - 1 + len(appTabs)) % len(appTabs)
+	case statsIntervalKey:
+		if m.activeTab == appStatsTab {
+			m.statsInterval = NextStatsInterval(m.statsInterval)
+			m.loaded[appStatsTab] = false
+			return m, requestStatsInterval(m.statsInterval)
+		}
 	}
 	return m, nil
 }
@@ -106,7 +135,11 @@ func (m AppDetailModel) View() string {
 	b.WriteString(m.styles.Title.Render("App: "+m.appName) + "\n\n")
 	b.WriteString(m.renderTabs() + "\n\n")
 	b.WriteString(m.renderActiveTab())
-	b.WriteString("\n" + renderHelp(m.styles.HelpBar, "tab: switch tab", "o: open", "esc: back"))
+	help := []string{"tab: switch tab", "o: open", "esc: back"}
+	if m.activeTab == appStatsTab {
+		help = append([]string{"i: interval"}, help...)
+	}
+	b.WriteString("\n" + renderHelp(m.styles.HelpBar, help...))
 	return b.String()
 }
 
@@ -134,8 +167,8 @@ func (m AppDetailModel) renderActiveTab() string {
 		return m.renderInfoTab()
 	case 1:
 		return m.renderProcessesTab()
-	case 2:
-		return m.renderStatsTab()
+	case appStatsTab:
+		return renderStats(m.styles, m.stats, m.width, m.statsInterval)
 	case 3:
 		return m.renderConfigTab()
 	case 4:
@@ -191,137 +224,6 @@ func (m AppDetailModel) renderProcessesTab() string {
 		fmt.Fprintf(&b, "  %s  %s  %s  %s  %s\n", p.Name, p.Type, p.Release, state, p.Started)
 	}
 	return b.String()
-}
-
-func (m AppDetailModel) renderStatsTab() string {
-	if len(m.stats) == 0 {
-		return "No stats available."
-	}
-	graphWidth := m.width - 4
-	if graphWidth > 60 {
-		graphWidth = 60
-	}
-	keys := m.stats.OrderedKeys()
-	label := m.styles.Label.Width(statsLabelWidth(m.stats, keys, m.styles.Label.GetWidth()))
-	var b strings.Builder
-	for _, key := range keys {
-		metric := m.stats[key]
-		title := metric.Title
-		if title == "" {
-			title = key
-		}
-		b.WriteString(label.Render(title+":") + m.renderStatValue(metric) + "\n")
-		if graph := sparkline(metric.Values(), graphWidth); graph != "" {
-			b.WriteString("  " + m.styles.Sparkline.Render(graph) + "\n")
-		}
-		b.WriteString("\n")
-	}
-	return b.String()
-}
-
-// statsLabelWidth widens the label column to fit the longest metric title.
-func statsLabelWidth(stats runway.AppStats, keys []string, min int) int {
-	w := min
-	for _, k := range keys {
-		title := stats[k].Title
-		if title == "" {
-			title = k
-		}
-		if n := len(title) + 2; n > w {
-			w = n
-		}
-	}
-	return w
-}
-
-func (m AppDetailModel) renderStatValue(metric runway.StatsMetric) string {
-	latest, ok := metric.Latest()
-	if !ok {
-		return m.styles.Value.Render("no data")
-	}
-	text := formatStatValue(latest)
-	if metric.Max > 0 {
-		text += " / " + formatStatValue(metric.Max)
-	}
-	if metric.Unit != "" {
-		text += " " + metric.Unit
-	}
-	switch statLevelFor(metric, latest) {
-	case levelCritical:
-		return m.styles.StatusDown.Render(text)
-	case levelWarn:
-		return m.styles.StatusWarn.Render(text)
-	default:
-		return m.styles.Value.Render(text)
-	}
-}
-
-type statLevel int
-
-const (
-	levelOK statLevel = iota
-	levelWarn
-	levelCritical
-)
-
-// statLevelFor classifies v against the metric's thresholds. A zero
-// threshold means it is not set.
-func statLevelFor(metric runway.StatsMetric, v float64) statLevel {
-	switch {
-	case metric.CriticalAbove > 0 && v > metric.CriticalAbove:
-		return levelCritical
-	case metric.WarnAbove > 0 && v > metric.WarnAbove:
-		return levelWarn
-	default:
-		return levelOK
-	}
-}
-
-// formatStatValue formats a metric value compactly: whole numbers at 100+,
-// one decimal at 1+, and three significant digits below that.
-func formatStatValue(v float64) string {
-	switch {
-	case v == 0:
-		return "0"
-	case math.Abs(v) >= 100:
-		return strconv.FormatFloat(v, 'f', 0, 64)
-	case math.Abs(v) >= 1:
-		return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64)
-	default:
-		return strconv.FormatFloat(v, 'g', 3, 64)
-	}
-}
-
-var sparkBlocks = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
-
-func sparkline(values []float64, width int) string {
-	if len(values) == 0 {
-		return ""
-	}
-	if len(values) > width {
-		values = values[len(values)-width:]
-	}
-	min, max := values[0], values[0]
-	for _, v := range values[1:] {
-		if v < min {
-			min = v
-		}
-		if v > max {
-			max = v
-		}
-	}
-	var sb strings.Builder
-	for _, v := range values {
-		idx := 3
-		if max > min {
-			idx = int((v - min) / (max - min) * 7)
-			if idx > 7 {
-				idx = 7
-			}
-		}
-		sb.WriteRune(sparkBlocks[idx])
-	}
-	return sb.String()
 }
 
 func (m AppDetailModel) renderConfigTab() string {

@@ -25,8 +25,9 @@ func FetchAppList(ctx context.Context, r runway.Runner) tea.Cmd {
 	}
 }
 
-// FetchAppDetail returns a batch command that fetches all app detail data.
-func FetchAppDetail(ctx context.Context, r runway.Runner, name string) tea.Cmd {
+// FetchAppDetail returns a batch command that fetches all app detail data,
+// with stats over interval.
+func FetchAppDetail(ctx context.Context, r runway.Runner, name, interval string) tea.Cmd {
 	return tea.Batch(
 		func() tea.Msg {
 			d, err := r.AppShow(ctx, name)
@@ -36,10 +37,7 @@ func FetchAppDetail(ctx context.Context, r runway.Runner, name string) tea.Cmd {
 			p, err := r.AppProcesses(ctx, name)
 			return msg.AppProcessesResultMsg{Processes: p, Err: err}
 		},
-		func() tea.Msg {
-			s, err := r.AppStats(ctx, name)
-			return msg.AppStatsResultMsg{Stats: s, Err: err}
-		},
+		FetchAppStats(ctx, r, name, interval),
 		func() tea.Msg {
 			c, err := r.AppConfig(ctx, name)
 			return msg.AppConfigResultMsg{Config: c, Err: err}
@@ -67,13 +65,15 @@ func FetchServiceList(ctx context.Context, r runway.Runner) tea.Cmd {
 	}
 }
 
-// FetchServiceDetail returns a batch command for service detail data.
-func FetchServiceDetail(ctx context.Context, r runway.Runner, name string) tea.Cmd {
+// FetchServiceDetail returns a batch command for service detail data,
+// with stats over interval.
+func FetchServiceDetail(ctx context.Context, r runway.Runner, name, interval string) tea.Cmd {
 	return tea.Batch(
 		func() tea.Msg {
 			s, err := r.ServiceShow(ctx, name)
 			return msg.ServiceDetailResultMsg{Service: s, Err: err}
 		},
+		FetchServiceStats(ctx, r, name, interval),
 		func() tea.Msg {
 			d, err := r.ServiceDSN(ctx, name)
 			return msg.ServiceDSNResultMsg{DSN: d, Err: err}
@@ -87,6 +87,22 @@ func FetchServiceDetail(ctx context.Context, r runway.Runner, name string) tea.C
 			return msg.ServiceBackupsResultMsg{Backups: b, Err: err}
 		},
 	)
+}
+
+// FetchAppStats returns a command that fetches app stats over interval.
+func FetchAppStats(ctx context.Context, r runway.Runner, name, interval string) tea.Cmd {
+	return func() tea.Msg {
+		s, err := r.AppStats(ctx, name, interval)
+		return msg.AppStatsResultMsg{Stats: s, Interval: interval, Err: err}
+	}
+}
+
+// FetchServiceStats returns a command that fetches service stats over interval.
+func FetchServiceStats(ctx context.Context, r runway.Runner, name, interval string) tea.Cmd {
+	return func() tea.Msg {
+		s, err := r.ServiceStats(ctx, name, interval)
+		return msg.ServiceStatsResultMsg{Stats: s, Interval: interval, Err: err}
+	}
 }
 
 func FetchVolumeList(ctx context.Context, r runway.Runner) tea.Cmd {

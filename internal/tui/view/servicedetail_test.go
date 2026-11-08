@@ -52,7 +52,7 @@ func TestServiceDetailDSNTab(t *testing.T) {
 	m, _ = m.Update(msg.ServiceDSNResultMsg{
 		DSN: runway.ServiceDSN{"DATABASE_URL": "postgres://localhost/db"},
 	})
-	m.activeTab = 3
+	m.activeTab = 4
 	v := m.View()
 	if !strings.Contains(v, "DATABASE_URL") {
 		t.Error("DSN tab should show DSN key")
@@ -73,5 +73,35 @@ func TestServiceDetailVolumeSizeInMB(t *testing.T) {
 	}
 	if strings.Contains(v, "bytes") {
 		t.Errorf("volume size is in MB, not bytes, got %q", v)
+	}
+}
+
+func TestServiceDetailStatsTab(t *testing.T) {
+	m := NewServiceDetailModel("my-db", testDetailStyles(), 80, 24)
+	m, _ = m.Update(msg.ServiceStatsResultMsg{
+		Stats: runway.Stats{
+			"db_tps": {Title: "Transactions", Unit: "tps", Data: []runway.StatsPoint{{Value: 1}, {Value: 2}}},
+		},
+		Interval: DefaultStatsInterval,
+	})
+	m.activeTab = 1
+	v := m.View()
+	if !strings.Contains(v, "Stats") || !strings.Contains(v, "Transactions") || !strings.Contains(v, "2 tps") {
+		t.Errorf("service stats tab should render metrics, got:\n%s", v)
+	}
+	if !intervalLineRE.MatchString(v) {
+		t.Errorf("service stats tab should show interval, got:\n%s", v)
+	}
+}
+
+func TestServiceStatsIntervalKey(t *testing.T) {
+	m := NewServiceDetailModel("my-db", testDetailStyles(), 80, 24)
+	m.activeTab = 1
+	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("i")})
+	if m.StatsInterval() != "168h" || cmd == nil {
+		t.Fatalf("interval = %q, cmd = %v; want 168h and a fetch command", m.StatsInterval(), cmd)
+	}
+	if got, ok := cmd().(msg.StatsIntervalMsg); !ok || got.Interval != "168h" {
+		t.Errorf("cmd() = %#v, want StatsIntervalMsg{168h}", got)
 	}
 }

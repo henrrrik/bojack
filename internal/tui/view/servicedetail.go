@@ -12,24 +12,34 @@ import (
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
-var serviceTabs = []string{"Info", "Config", "Backups", "DSN"}
+var serviceTabs = []string{"Info", "Stats", "Config", "Backups", "DSN"}
+
+const (
+	serviceInfoTab = iota
+	serviceStatsTab
+	serviceConfigTab
+	serviceBackupsTab
+	serviceDSNTab
+)
 
 // ServiceDetailModel shows service details with tabbed sections.
 type ServiceDetailModel struct {
-	name      string
-	activeTab int
-	styles    DetailStyles
-	spinner   spinner.Model
-	width     int
-	height    int
+	name          string
+	activeTab     int
+	statsInterval string
+	styles        DetailStyles
+	spinner       spinner.Model
+	width         int
+	height        int
 
 	service *runway.Service
+	stats   runway.Stats
 	config  runway.ServiceConfig
 	backups string
 	dsn     runway.ServiceDSN
 
-	loaded [4]bool
-	errors [4]error
+	loaded [5]bool
+	errors [5]error
 }
 
 // NewServiceDetailModel creates a new service detail model.
@@ -37,12 +47,24 @@ func NewServiceDetailModel(name string, styles DetailStyles, width, height int) 
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return ServiceDetailModel{
-		name:    name,
-		styles:  styles,
-		spinner: s,
-		width:   width,
-		height:  height,
+		name:          name,
+		statsInterval: DefaultStatsInterval,
+		styles:        styles,
+		spinner:       s,
+		width:         width,
+		height:        height,
 	}
+}
+
+// WithStatsInterval sets the interval the stats tab is showing.
+func (m ServiceDetailModel) WithStatsInterval(interval string) ServiceDetailModel {
+	m.statsInterval = interval
+	return m
+}
+
+// StatsInterval returns the interval the stats tab is showing.
+func (m ServiceDetailModel) StatsInterval() string {
+	return m.statsInterval
 }
 
 func (m ServiceDetailModel) Update(teaMsg tea.Msg) (ServiceDetailModel, tea.Cmd) {
@@ -51,21 +73,23 @@ func (m ServiceDetailModel) Update(teaMsg tea.Msg) (ServiceDetailModel, tea.Cmd)
 		m.width = teaMsg.Width
 		m.height = teaMsg.Height
 	case msg.ServiceDetailResultMsg:
-		m.loaded[0] = true
+		m.loaded[serviceInfoTab] = true
 		m.service = teaMsg.Service
-		m.errors[0] = teaMsg.Err
+		m.errors[serviceInfoTab] = teaMsg.Err
+	case msg.ServiceStatsResultMsg:
+		m = m.applyStats(teaMsg.Stats, teaMsg.Interval, teaMsg.Err)
 	case msg.ServiceConfigResultMsg:
-		m.loaded[1] = true
+		m.loaded[serviceConfigTab] = true
 		m.config = teaMsg.Config
-		m.errors[1] = teaMsg.Err
+		m.errors[serviceConfigTab] = teaMsg.Err
 	case msg.ServiceBackupsResultMsg:
-		m.loaded[2] = true
+		m.loaded[serviceBackupsTab] = true
 		m.backups = string(teaMsg.Backups)
-		m.errors[2] = teaMsg.Err
+		m.errors[serviceBackupsTab] = teaMsg.Err
 	case msg.ServiceDSNResultMsg:
-		m.loaded[3] = true
+		m.loaded[serviceDSNTab] = true
 		m.dsn = teaMsg.DSN
-		m.errors[3] = teaMsg.Err
+		m.errors[serviceDSNTab] = teaMsg.Err
 	case tea.KeyMsg:
 		return m.handleKey(teaMsg)
 	}
@@ -74,12 +98,30 @@ func (m ServiceDetailModel) Update(teaMsg tea.Msg) (ServiceDetailModel, tea.Cmd)
 	return m, cmd
 }
 
+// applyStats stores a stats result, ignoring stale results fetched for a
+// previous interval.
+func (m ServiceDetailModel) applyStats(stats runway.Stats, interval string, err error) ServiceDetailModel {
+	if interval != m.statsInterval {
+		return m
+	}
+	m.loaded[serviceStatsTab] = true
+	m.stats = stats
+	m.errors[serviceStatsTab] = err
+	return m
+}
+
 func (m ServiceDetailModel) handleKey(k tea.KeyMsg) (ServiceDetailModel, tea.Cmd) {
 	switch k.String() {
 	case "tab":
 		m.activeTab = (m.activeTab + 1) % len(serviceTabs)
 	case "shift+tab":
 		m.activeTab = (m.activeTab - 1 + len(serviceTabs)) % len(serviceTabs)
+	case statsIntervalKey:
+		if m.activeTab == serviceStatsTab {
+			m.statsInterval = NextStatsInterval(m.statsInterval)
+			m.loaded[serviceStatsTab] = false
+			return m, requestStatsInterval(m.statsInterval)
+		}
 	}
 	return m, nil
 }
@@ -89,7 +131,11 @@ func (m ServiceDetailModel) View() string {
 	b.WriteString(m.styles.Title.Render("Service: "+m.name) + "\n\n")
 	b.WriteString(m.renderTabs() + "\n\n")
 	b.WriteString(m.renderActiveTab())
-	b.WriteString("\n" + renderHelp(m.styles.HelpBar, "tab: switch tab", "esc: back"))
+	help := []string{"tab: switch tab", "esc: back"}
+	if m.activeTab == serviceStatsTab {
+		help = append([]string{"i: interval"}, help...)
+	}
+	b.WriteString("\n" + renderHelp(m.styles.HelpBar, help...))
 	return b.String()
 }
 
@@ -113,13 +159,15 @@ func (m ServiceDetailModel) renderActiveTab() string {
 		return m.styles.Error.Render("Error: " + m.errors[m.activeTab].Error())
 	}
 	switch m.activeTab {
-	case 0:
+	case serviceInfoTab:
 		return m.renderInfoTab()
-	case 1:
+	case serviceStatsTab:
+		return renderStats(m.styles, m.stats, m.width, m.statsInterval)
+	case serviceConfigTab:
 		return m.renderConfigTab()
-	case 2:
+	case serviceBackupsTab:
 		return m.renderBackupsTab()
-	case 3:
+	case serviceDSNTab:
 		return m.renderDSNTab()
 	}
 	return ""

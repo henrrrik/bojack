@@ -48,9 +48,24 @@ type AppProcessesResultMsg struct {
 	Err       error
 }
 
+// AppStatsResultMsg carries app stats for the given interval.
 type AppStatsResultMsg struct {
-	Stats runway.AppStats
-	Err   error
+	Stats    runway.Stats
+	Interval string
+	Err      error
+}
+
+// ServiceStatsResultMsg carries service stats for the given interval.
+type ServiceStatsResultMsg struct {
+	Stats    runway.Stats
+	Interval string
+	Err      error
+}
+
+// StatsIntervalMsg asks the root model to refetch stats for the current
+// detail view over a new interval.
+type StatsIntervalMsg struct {
+	Interval string
 }
 
 type AppConfigResultMsg struct {
