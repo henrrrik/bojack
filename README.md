@@ -12,7 +12,8 @@ resizes, domain re-checks) always ask you to confirm first.
 - **Apps:** list with type, plan, region, role and status. The detail view has tabs for
   Info, Processes, Stats, Config, Domains, Sharing and Logs.
 - **Stats** (apps and services): one line per metric with its latest value against the plan limit and a
-  sparkline, and a braille line chart of the selected metric (`↑`/`↓`) with time and value axes, scaled from 0 to
+  usage gauge (`━━━━──│───  41%`: filled to the latest value, coloured by the warning and critical
+  thresholds, with `│` marking the peak over the interval), and a braille line chart of the selected metric (`↑`/`↓`) with time and value axes, scaled from 0 to
   the plan limit, with the warning and critical thresholds drawn in. Pin a metric (`p`) to
   chart it above the selected one, over the same time range, to compare them. Charts use
   [ntcharts](https://github.com/NimbleMarkets/ntcharts).
