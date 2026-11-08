@@ -13,6 +13,8 @@ command and renders the result, so it sees exactly what the CLI sees.
 - **Services:** details, stats (including database metrics), config, backups and DSN.
 - **Volumes, Domains, Policies, Regions, Plans, Templates, Registries, SSH Keys, API Keys:**
   simple tables. SSH keys show their `SHA256:` fingerprint, as `ssh-keygen -l` prints it.
+  Press `enter` on a template or volume for its details (all versions and the full
+  description of a template; whether a volume can be resized, attached or deleted).
 
 ## Requirements
 

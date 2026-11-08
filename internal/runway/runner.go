@@ -42,6 +42,8 @@ type Runner interface {
 	RegionList(ctx context.Context) ([]Region, error)
 	PlanList(ctx context.Context) ([]Plan, error)
 	TemplateList(ctx context.Context) ([]Template, error)
+	TemplateShow(ctx context.Context, name string) (*Template, error)
+	VolumeShow(ctx context.Context, name string) (*Volume, error)
 	RegistryList(ctx context.Context) ([]Registry, error)
 	SSHKeyList(ctx context.Context) ([]SSHKey, error)
 	APIKeyList(ctx context.Context) ([]APIKey, error)
@@ -272,6 +274,14 @@ func (r *CLIRunner) PlanList(ctx context.Context) ([]Plan, error) {
 
 func (r *CLIRunner) TemplateList(ctx context.Context) ([]Template, error) {
 	return runJSON[[]Template](ctx, r.exec, "template", "ls", "-o", "json")
+}
+
+func (r *CLIRunner) TemplateShow(ctx context.Context, name string) (*Template, error) {
+	return runJSONPtr[Template](ctx, r.exec, "template", "show", name, "-o", "json")
+}
+
+func (r *CLIRunner) VolumeShow(ctx context.Context, name string) (*Volume, error) {
+	return runJSONPtr[Volume](ctx, r.exec, "volume", "show", name, "-o", "json")
 }
 
 func (r *CLIRunner) RegistryList(ctx context.Context) ([]Registry, error) {
