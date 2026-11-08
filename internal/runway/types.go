@@ -97,10 +97,11 @@ type LogEntry struct {
 	Type    string `json:"type"`
 }
 
-// AppStats is the response from "app stats -o json": a set of metric series
-// keyed by metric name (e.g. "cpu", "ram", "hdd_ephemeral_app", "net_in").
-// The set of keys varies by app, so it is modelled as a map.
-type AppStats map[string]StatsMetric
+// Stats is the response from "app stats -o json" and "service stats -o json":
+// a set of metric series keyed by metric name (e.g. "cpu", "ram",
+// "hdd_ephemeral_app", "net_in", "db_tps"). The set of keys varies by app and
+// service type, so it is modelled as a map.
+type Stats map[string]StatsMetric
 
 // StatsMetric is a single metric time series. Values are already in Unit.
 type StatsMetric struct {
@@ -136,7 +137,7 @@ func (m StatsMetric) Values() []float64 {
 
 // OrderedKeys returns the metric keys in display order: CPU, RAM, disks,
 // network in/out, then anything else alphabetically.
-func (s AppStats) OrderedKeys() []string {
+func (s Stats) OrderedKeys() []string {
 	keys := make([]string, 0, len(s))
 	for k := range s {
 		keys = append(keys, k)

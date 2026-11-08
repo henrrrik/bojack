@@ -10,7 +10,7 @@ command and renders the result, so it sees exactly what the CLI sees.
 - **Apps:** list with type, plan, region, role and status. The detail view has tabs for
   Info, Processes, Stats (CPU, memory, disk and network with usage vs. plan limit and sparklines), Config, Domains,
   Sharing and Logs.
-- **Services:** details, DSN, config and backups.
+- **Services:** details, stats (including database metrics), config, backups and DSN.
 - **Volumes, Domains, Policies, Regions, Plans:** simple tables.
 
 ## Requirements
@@ -39,6 +39,7 @@ go run ./cmd/runway-tui
 | `↑`/`↓`, `j`/`k`    | Move                         |
 | `enter`             | Select                       |
 | `tab` / `shift+tab` | Next / previous tab          |
+| `i`                 | Cycle stats interval (1h / 6h / 24h / 7d / 30d) |
 | `r`                 | Refresh                      |
 | `o`                 | Open app in browser          |
 | `esc`               | Back                         |

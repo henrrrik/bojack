@@ -138,28 +138,52 @@ func TestSparklineAllSame(t *testing.T) {
 	}
 }
 
-func TestSparklineTruncatesWidth(t *testing.T) {
+func TestSparklineFitsWidth(t *testing.T) {
 	values := make([]float64, 100)
 	for i := range values {
 		values[i] = float64(i)
 	}
 	got := sparkline(values, 20)
-	// Should use last 20 values, so length = 20 runes
-	runes := []rune(got)
-	if len(runes) != 20 {
+	if runes := []rune(got); len(runes) != 20 {
 		t.Errorf("len = %d, want 20", len(runes))
 	}
 }
 
-func statsModel(stats runway.AppStats) AppDetailModel {
+func TestDownsampleKeepsBucketMax(t *testing.T) {
+	values := make([]float64, 100)
+	for i := range values {
+		values[i] = float64(i)
+	}
+	values[1] = 500 // early spike must survive
+	got := downsample(values, 20)
+	if len(got) != 20 {
+		t.Fatalf("len = %d, want 20", len(got))
+	}
+	if got[0] != 500 {
+		t.Errorf("first bucket = %v, want spike 500", got[0])
+	}
+	if got[19] != 99 {
+		t.Errorf("last bucket = %v, want 99", got[19])
+	}
+}
+
+func TestDownsampleShortSeriesUnchanged(t *testing.T) {
+	values := []float64{3, 1, 2}
+	got := downsample(values, 20)
+	if len(got) != 3 || got[0] != 3 || got[1] != 1 || got[2] != 2 {
+		t.Errorf("downsample = %v, want %v", got, values)
+	}
+}
+
+func statsModel(stats runway.Stats) AppDetailModel {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.AppStatsResultMsg{Stats: stats})
+	m, _ = m.Update(msg.AppStatsResultMsg{Stats: stats, Interval: DefaultStatsInterval})
 	m.activeTab = 2
 	return m
 }
 
 func TestStatsTabShowsSparklines(t *testing.T) {
-	m := statsModel(runway.AppStats{
+	m := statsModel(runway.Stats{
 		"cpu": {Title: "CPU", Unit: "cores", Max: 0.5, Data: []runway.StatsPoint{{Value: 0.1}, {Value: 0.2}, {Value: 0.3}}},
 	})
 	v := m.View()
@@ -169,7 +193,7 @@ func TestStatsTabShowsSparklines(t *testing.T) {
 }
 
 func TestStatsTabShowsLatestMaxAndUnit(t *testing.T) {
-	m := statsModel(runway.AppStats{
+	m := statsModel(runway.Stats{
 		"ram": {Title: "Memory", Unit: "MiB", Max: 128, Data: []runway.StatsPoint{{Value: 10}, {Value: 12.87109375}}},
 	})
 	v := m.View()
@@ -182,7 +206,7 @@ func TestStatsTabShowsLatestMaxAndUnit(t *testing.T) {
 }
 
 func TestStatsTabEmptySeries(t *testing.T) {
-	m := statsModel(runway.AppStats{
+	m := statsModel(runway.Stats{
 		"hdd_ephemeral_app": {Title: "HDD (ephemeral, app)", Unit: "MiB", Max: 2048},
 	})
 	v := m.View()
@@ -192,7 +216,7 @@ func TestStatsTabEmptySeries(t *testing.T) {
 }
 
 func TestStatsTabOrdersMetrics(t *testing.T) {
-	m := statsModel(runway.AppStats{
+	m := statsModel(runway.Stats{
 		"net_out": {Title: "Network (out)", Data: []runway.StatsPoint{{Value: 1}}},
 		"cpu":     {Title: "CPU", Data: []runway.StatsPoint{{Value: 1}}},
 		"ram":     {Title: "Memory", Data: []runway.StatsPoint{{Value: 1}}},
@@ -255,5 +279,50 @@ func TestAppDetailErrorTab(t *testing.T) {
 	v := m.View()
 	if !strings.Contains(v, "Error") {
 		t.Error("should show error on info tab")
+	}
+}
+
+func TestStatsTabShowsInterval(t *testing.T) {
+	m := statsModel(runway.Stats{"cpu": {Title: "CPU", Data: []runway.StatsPoint{{Value: 1}}}})
+	v := m.View()
+	if !intervalLineRE.MatchString(v) {
+		t.Errorf("stats tab should show current interval, got:\n%s", v)
+	}
+	if !strings.Contains(v, "i: interval") {
+		t.Errorf("stats tab help should mention interval key, got:\n%s", v)
+	}
+}
+
+func TestStatsIntervalKeyCyclesAndRequestsFetch(t *testing.T) {
+	m := statsModel(runway.Stats{"cpu": {Title: "CPU", Data: []runway.StatsPoint{{Value: 1}}}})
+	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("i")})
+	if m.StatsInterval() != "168h" {
+		t.Errorf("interval = %q, want 168h", m.StatsInterval())
+	}
+	if !strings.Contains(m.View(), "Loading") {
+		t.Error("stats tab should show loading after interval change")
+	}
+	if cmd == nil {
+		t.Fatal("expected a command requesting a stats fetch")
+	}
+	if got, ok := cmd().(msg.StatsIntervalMsg); !ok || got.Interval != "168h" {
+		t.Errorf("cmd() = %#v, want StatsIntervalMsg{168h}", got)
+	}
+}
+
+func TestStatsIntervalKeyIgnoredOutsideStatsTab(t *testing.T) {
+	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
+	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("i")})
+	if m.StatsInterval() != DefaultStatsInterval || cmd != nil {
+		t.Errorf("interval key on Info tab should do nothing, got interval %q cmd %v", m.StatsInterval(), cmd)
+	}
+}
+
+func TestStaleStatsResultIgnored(t *testing.T) {
+	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24).WithStatsInterval("1h")
+	m.activeTab = 2
+	m, _ = m.Update(msg.AppStatsResultMsg{Stats: runway.Stats{"cpu": {Title: "CPU"}}, Interval: "24h"})
+	if !strings.Contains(m.View(), "Loading") {
+		t.Error("result for a different interval should be ignored")
 	}
 }

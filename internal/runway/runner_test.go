@@ -79,12 +79,26 @@ func TestAppProcesses(t *testing.T) {
 
 func TestAppStats(t *testing.T) {
 	fake := newFake(map[string][]byte{
-		"app stats -a my-app -o json": []byte(appStatsJSON),
+		"app stats -a my-app -i 168h -o json": []byte(appStatsJSON),
 	})
 	r := NewCLIRunner(fake)
-	stats, err := r.AppStats(context.Background(), "my-app")
+	stats, err := r.AppStats(context.Background(), "my-app", "168h")
 	if err != nil {
 		t.Fatalf("AppStats: %v", err)
+	}
+	if v, ok := stats["cpu"].Latest(); !ok || v != 0.25 {
+		t.Errorf("cpu latest = %v, %v; want 0.25, true", v, ok)
+	}
+}
+
+func TestServiceStats(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"service stats my-db -i 1h -o json": []byte(appStatsJSON),
+	})
+	r := NewCLIRunner(fake)
+	stats, err := r.ServiceStats(context.Background(), "my-db", "1h")
+	if err != nil {
+		t.Fatalf("ServiceStats: %v", err)
 	}
 	if v, ok := stats["cpu"].Latest(); !ok || v != 0.25 {
 		t.Errorf("cpu latest = %v, %v; want 0.25, true", v, ok)

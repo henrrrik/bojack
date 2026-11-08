@@ -1,11 +1,31 @@
 package tui
 
 import (
+	"context"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/henrrrik/runway-tui/internal/msg"
+	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/runway-tui/internal/tui/view"
 )
+
+// fakeStatsRunner implements runway.Runner; only the stats methods are
+// usable; any other call panics on the nil embedded interface.
+type fakeStatsRunner struct {
+	runway.Runner
+	calls []string
+}
+
+func (f *fakeStatsRunner) AppStats(_ context.Context, name, interval string) (runway.Stats, error) {
+	f.calls = append(f.calls, "app "+name+" "+interval)
+	return runway.Stats{}, nil
+}
+
+func (f *fakeStatsRunner) ServiceStats(_ context.Context, name, interval string) (runway.Stats, error) {
+	f.calls = append(f.calls, "service "+name+" "+interval)
+	return runway.Stats{}, nil
+}
 
 func TestInitialViewIsMainMenu(t *testing.T) {
 	m := NewModel(nil)
@@ -115,5 +135,54 @@ func TestNestedNavigation(t *testing.T) {
 	m4 := r4.(Model)
 	if m4.currentView != msg.ViewMainMenu {
 		t.Errorf("currentView = %d, want ViewMainMenu", m4.currentView)
+	}
+}
+
+func TestStatsIntervalMsgFetchesAppStats(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	m := NewModel(fake)
+	result, _ := m.handleNavigate(msg.NavigateMsg{View: msg.ViewAppDetail, Param: "my-app"})
+	result, cmd := result.(Model).Update(msg.StatsIntervalMsg{Interval: "168h"})
+	if cmd == nil {
+		t.Fatal("expected a fetch command")
+	}
+	got, ok := cmd().(msg.AppStatsResultMsg)
+	if !ok || got.Interval != "168h" {
+		t.Errorf("cmd() = %#v, want AppStatsResultMsg for 168h", got)
+	}
+	if len(fake.calls) != 1 || fake.calls[0] != "app my-app 168h" {
+		t.Errorf("calls = %v", fake.calls)
+	}
+	if result.(Model).statsInterval != "168h" {
+		t.Errorf("statsInterval = %q, want 168h", result.(Model).statsInterval)
+	}
+}
+
+func TestStatsIntervalMsgFetchesServiceStats(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	m := NewModel(fake)
+	result, _ := m.handleNavigate(msg.NavigateMsg{View: msg.ViewServiceDetail, Param: "my-db"})
+	_, cmd := result.(Model).Update(msg.StatsIntervalMsg{Interval: "1h"})
+	if cmd == nil {
+		t.Fatal("expected a fetch command")
+	}
+	if got, ok := cmd().(msg.ServiceStatsResultMsg); !ok || got.Interval != "1h" {
+		t.Errorf("cmd() = %#v, want ServiceStatsResultMsg for 1h", got)
+	}
+	if len(fake.calls) != 1 || fake.calls[0] != "service my-db 1h" {
+		t.Errorf("calls = %v", fake.calls)
+	}
+}
+
+func TestStatsIntervalPersistsAcrossNavigation(t *testing.T) {
+	m := NewModel(&fakeStatsRunner{})
+	if m.statsInterval != view.DefaultStatsInterval {
+		t.Errorf("default statsInterval = %q", m.statsInterval)
+	}
+	result, _ := m.handleNavigate(msg.NavigateMsg{View: msg.ViewAppDetail, Param: "my-app"})
+	result, _ = result.(Model).Update(msg.StatsIntervalMsg{Interval: "720h"})
+	result, _ = result.(Model).handleNavigate(msg.NavigateMsg{View: msg.ViewServiceDetail, Param: "my-db"})
+	if got := result.(Model).serviceDetail.StatsInterval(); got != "720h" {
+		t.Errorf("service detail interval = %q, want 720h", got)
 	}
 }

@@ -16,7 +16,7 @@ type Runner interface {
 	AppList(ctx context.Context) ([]AppListEntry, error)
 	AppShow(ctx context.Context, appName string) (*AppDetail, error)
 	AppProcesses(ctx context.Context, appName string) ([]Process, error)
-	AppStats(ctx context.Context, appName string) (AppStats, error)
+	AppStats(ctx context.Context, appName, interval string) (Stats, error)
 	AppConfig(ctx context.Context, appName string) (AppConfig, error)
 	AppDomains(ctx context.Context, appName string) ([]Domain, error)
 	AppShares(ctx context.Context, appName string) (*AppShareList, error)
@@ -25,6 +25,7 @@ type Runner interface {
 	ServiceList(ctx context.Context) ([]Service, error)
 	ServiceShow(ctx context.Context, name string) (*Service, error)
 	ServiceDSN(ctx context.Context, name string) (ServiceDSN, error)
+	ServiceStats(ctx context.Context, name, interval string) (Stats, error)
 	ServiceConfig(ctx context.Context, name string) (ServiceConfig, error)
 	ServiceBackups(ctx context.Context, name string) (json.RawMessage, error)
 	VolumeList(ctx context.Context) ([]Volume, error)
@@ -70,8 +71,9 @@ func (r *CLIRunner) AppProcesses(ctx context.Context, appName string) ([]Process
 	return runJSON[[]Process](ctx, r.exec, "app", "ps", "-a", appName, "-o", "json")
 }
 
-func (r *CLIRunner) AppStats(ctx context.Context, appName string) (AppStats, error) {
-	return runJSON[AppStats](ctx, r.exec, "app", "stats", "-a", appName, "-o", "json")
+// AppStats fetches app metrics over interval (a Go duration such as "24h").
+func (r *CLIRunner) AppStats(ctx context.Context, appName, interval string) (Stats, error) {
+	return runJSON[Stats](ctx, r.exec, "app", "stats", "-a", appName, "-i", interval, "-o", "json")
 }
 
 func (r *CLIRunner) AppConfig(ctx context.Context, appName string) (AppConfig, error) {
@@ -105,6 +107,11 @@ func (r *CLIRunner) ServiceShow(ctx context.Context, name string) (*Service, err
 
 func (r *CLIRunner) ServiceDSN(ctx context.Context, name string) (ServiceDSN, error) {
 	return runJSON[ServiceDSN](ctx, r.exec, "service", "dsn", name, "-o", "json")
+}
+
+// ServiceStats fetches service metrics over interval (a Go duration such as "24h").
+func (r *CLIRunner) ServiceStats(ctx context.Context, name, interval string) (Stats, error) {
+	return runJSON[Stats](ctx, r.exec, "service", "stats", name, "-i", interval, "-o", "json")
 }
 
 func (r *CLIRunner) ServiceConfig(ctx context.Context, name string) (ServiceConfig, error) {

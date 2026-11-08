@@ -18,6 +18,9 @@ type Model struct {
 	currentView msg.ViewID
 	viewStack   []msg.ViewID
 	paramStack  []string
+	// statsInterval is the stats interval shared by app and service detail
+	// views; it persists across refresh and navigation.
+	statsInterval string
 
 	mainMenu      view.MainMenuModel
 	appList       view.AppListModel
@@ -36,11 +39,12 @@ func NewModel(runner runway.Runner) Model {
 	keys := DefaultKeyMap()
 	styles := DefaultStyles()
 	return Model{
-		runner:      runner,
-		keys:        keys,
-		styles:      styles,
-		currentView: msg.ViewMainMenu,
-		mainMenu:    view.NewMainMenuModel(),
+		runner:        runner,
+		keys:          keys,
+		styles:        styles,
+		currentView:   msg.ViewMainMenu,
+		statsInterval: view.DefaultStatsInterval,
+		mainMenu:      view.NewMainMenuModel(),
 	}
 }
 
@@ -58,6 +62,8 @@ func (m Model) Update(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleNavigate(teaMsg)
 	case msg.NavigateBackMsg:
 		return m.handleBack()
+	case msg.StatsIntervalMsg:
+		return m.handleStatsInterval(teaMsg)
 	case tea.KeyMsg:
 		return m.handleGlobalKey(teaMsg)
 	}
@@ -125,6 +131,22 @@ func (m Model) handleOpen() (tea.Model, tea.Cmd) {
 	}
 }
 
+// handleStatsInterval records the new interval and refetches stats for the
+// current detail view.
+func (m Model) handleStatsInterval(iv msg.StatsIntervalMsg) (tea.Model, tea.Cmd) {
+	m.statsInterval = iv.Interval
+	ctx, param := view.CmdContext(), m.currentParam()
+	switch m.currentView {
+	case msg.ViewAppDetail:
+		m.appDetail = m.appDetail.WithStatsInterval(iv.Interval)
+		return m, view.FetchAppStats(ctx, m.runner, param, iv.Interval)
+	case msg.ViewServiceDetail:
+		m.serviceDetail = m.serviceDetail.WithStatsInterval(iv.Interval)
+		return m, view.FetchServiceStats(ctx, m.runner, param, iv.Interval)
+	}
+	return m, nil
+}
+
 func (m Model) currentParam() string {
 	if len(m.paramStack) > 0 {
 		return m.paramStack[len(m.paramStack)-1]
@@ -158,14 +180,16 @@ func (m Model) initView(v msg.ViewID, param string) (Model, tea.Cmd) {
 		m.appList = view.NewAppListModel(m.styles.HelpBar, m.width, m.height)
 		return m, view.FetchAppList(ctx, m.runner)
 	case msg.ViewAppDetail:
-		m.appDetail = view.NewAppDetailModel(param, m.styles.DetailStyles(), m.width, m.height)
-		return m, view.FetchAppDetail(ctx, m.runner, param)
+		m.appDetail = view.NewAppDetailModel(param, m.styles.DetailStyles(), m.width, m.height).
+			WithStatsInterval(m.statsInterval)
+		return m, view.FetchAppDetail(ctx, m.runner, param, m.statsInterval)
 	case msg.ViewServiceList:
 		m.serviceList = view.NewServiceListModel(m.styles.HelpBar, m.width, m.height)
 		return m, view.FetchServiceList(ctx, m.runner)
 	case msg.ViewServiceDetail:
-		m.serviceDetail = view.NewServiceDetailModel(param, m.styles.DetailStyles(), m.width, m.height)
-		return m, view.FetchServiceDetail(ctx, m.runner, param)
+		m.serviceDetail = view.NewServiceDetailModel(param, m.styles.DetailStyles(), m.width, m.height).
+			WithStatsInterval(m.statsInterval)
+		return m, view.FetchServiceDetail(ctx, m.runner, param, m.statsInterval)
 	case msg.ViewVolumeList:
 		m.volumeList = view.NewVolumeListModel(m.styles.HelpBar, m.width, m.height)
 		return m, view.FetchVolumeList(ctx, m.runner)
