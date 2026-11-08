@@ -71,7 +71,7 @@ const (
 	minChartHeight = 6
 	maxChartHeight = 18
 	maxChartWidth  = 120
-	overviewSpark  = 30
+	overviewGauge  = 24
 )
 
 const (
@@ -165,7 +165,7 @@ func chartTitle(key string, metric runway.StatsMetric) string {
 }
 
 // renderOverview renders one line per metric: a selection (or pin) marker,
-// the title, the latest value against the limit, and a sparkline.
+// the title, the latest value against the limit, and a usage gauge.
 func renderOverview(styles DetailStyles, stats runway.Stats, keys []string, sel int, pinned string, width int) string {
 	titleW := statsLabelWidth(stats, keys, 0)
 	values := make([]string, len(keys))
@@ -174,7 +174,7 @@ func renderOverview(styles DetailStyles, stats runway.Stats, keys []string, sel 
 		values[i] = renderStatValue(styles, stats[k])
 		valueW = max(valueW, lipgloss.Width(values[i]))
 	}
-	sparkW := min(overviewSpark, width-2-titleW-valueW-2)
+	gaugeW := min(overviewGauge, width-2-titleW-valueW-2-5) // 5: the percentage
 	var b strings.Builder
 	for i, k := range keys {
 		metric := stats[k]
@@ -187,8 +187,8 @@ func renderOverview(styles DetailStyles, stats runway.Stats, keys []string, sel 
 			marker = styles.Title.UnsetPaddingLeft().Render(pinMarker)
 		}
 		line := marker + title + padRight(values[i], valueW)
-		if graph := sparkline(metric.Values(), sparkW); sparkW > 0 && graph != "" {
-			line += "  " + styles.Sparkline.Render(graph)
+		if gauge := renderGauge(styles, metric, gaugeW); gauge != "" {
+			line += "  " + gauge
 		}
 		b.WriteString(line + "\n")
 	}
@@ -230,13 +230,17 @@ func renderStatValue(styles DetailStyles, metric runway.StatsMetric) string {
 	if metric.Unit != "" {
 		text += " " + metric.Unit
 	}
-	switch statLevelFor(metric, latest) {
+	return levelStyle(styles, statLevelFor(metric, latest)).Render(text)
+}
+
+func levelStyle(styles DetailStyles, level statLevel) lipgloss.Style {
+	switch level {
 	case levelCritical:
-		return styles.StatusDown.Render(text)
+		return styles.StatusDown
 	case levelWarn:
-		return styles.StatusWarn.Render(text)
+		return styles.StatusWarn
 	default:
-		return styles.Value.Render(text)
+		return styles.Value
 	}
 }
 
@@ -274,55 +278,6 @@ func formatStatValue(v float64) string {
 	default:
 		return strconv.FormatFloat(v, 'g', 3, 64)
 	}
-}
-
-var sparkBlocks = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
-
-func sparkline(values []float64, width int) string {
-	if len(values) == 0 {
-		return ""
-	}
-	values = downsample(values, width)
-	min, max := values[0], values[0]
-	for _, v := range values[1:] {
-		if v < min {
-			min = v
-		}
-		if v > max {
-			max = v
-		}
-	}
-	var sb strings.Builder
-	for _, v := range values {
-		idx := 3
-		if max > min {
-			idx = int((v - min) / (max - min) * 7)
-			if idx > 7 {
-				idx = 7
-			}
-		}
-		sb.WriteRune(sparkBlocks[idx])
-	}
-	return sb.String()
-}
-
-// downsample reduces values to at most width points by splitting the series
-// into width buckets and keeping each bucket's maximum, so the whole interval
-// is shown and short spikes stay visible.
-func downsample(values []float64, width int) []float64 {
-	if width <= 0 || len(values) <= width {
-		return values
-	}
-	out := make([]float64, width)
-	for i := range out {
-		lo, hi := i*len(values)/width, (i+1)*len(values)/width
-		maxV := values[lo]
-		for _, v := range values[lo+1 : hi] {
-			maxV = math.Max(maxV, v)
-		}
-		out[i] = maxV
-	}
-	return out
 }
 
 // detailBodyHeight is the height left for a detail view's active tab, given

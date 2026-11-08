@@ -117,69 +117,6 @@ func TestAppDetailLogsTab(t *testing.T) {
 	}
 }
 
-func TestSparklineAscending(t *testing.T) {
-	got := sparkline([]float64{0, 1, 2, 3, 4, 5, 6, 7}, 40)
-	want := "▁▂▃▄▅▆▇█"
-	if got != want {
-		t.Errorf("sparkline = %q, want %q", got, want)
-	}
-}
-
-func TestSparklineEmpty(t *testing.T) {
-	got := sparkline(nil, 40)
-	if got != "" {
-		t.Errorf("sparkline = %q, want empty", got)
-	}
-}
-
-func TestSparklineAllSame(t *testing.T) {
-	got := sparkline([]float64{5, 5, 5, 5}, 40)
-	// All same values should produce middle blocks
-	for _, r := range got {
-		if r != '▄' {
-			t.Errorf("sparkline = %q, expected all ▄", got)
-			break
-		}
-	}
-}
-
-func TestSparklineFitsWidth(t *testing.T) {
-	values := make([]float64, 100)
-	for i := range values {
-		values[i] = float64(i)
-	}
-	got := sparkline(values, 20)
-	if runes := []rune(got); len(runes) != 20 {
-		t.Errorf("len = %d, want 20", len(runes))
-	}
-}
-
-func TestDownsampleKeepsBucketMax(t *testing.T) {
-	values := make([]float64, 100)
-	for i := range values {
-		values[i] = float64(i)
-	}
-	values[1] = 500 // early spike must survive
-	got := downsample(values, 20)
-	if len(got) != 20 {
-		t.Fatalf("len = %d, want 20", len(got))
-	}
-	if got[0] != 500 {
-		t.Errorf("first bucket = %v, want spike 500", got[0])
-	}
-	if got[19] != 99 {
-		t.Errorf("last bucket = %v, want 99", got[19])
-	}
-}
-
-func TestDownsampleShortSeriesUnchanged(t *testing.T) {
-	values := []float64{3, 1, 2}
-	got := downsample(values, 20)
-	if len(got) != 3 || got[0] != 3 || got[1] != 1 || got[2] != 2 {
-		t.Errorf("downsample = %v, want %v", got, values)
-	}
-}
-
 func statsModel(stats runway.Stats) AppDetailModel {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
 	m, _ = m.Update(msg.AppStatsResultMsg{Stats: stats, Interval: DefaultStatsInterval})
@@ -187,13 +124,13 @@ func statsModel(stats runway.Stats) AppDetailModel {
 	return m
 }
 
-func TestStatsTabShowsSparklines(t *testing.T) {
+func TestStatsTabShowsGauges(t *testing.T) {
 	m := statsModel(runway.Stats{
 		"cpu": {Title: "CPU", Unit: "cores", Max: 0.5, Data: []runway.StatsPoint{{Value: 0.1}, {Value: 0.2}, {Value: 0.3}}},
 	})
 	v := m.View()
-	if !strings.ContainsAny(v, "▁▂▃▄▅▆▇█") {
-		t.Error("stats tab should contain sparkline characters")
+	if !strings.Contains(v, gaugeFull) || !strings.Contains(v, "60%") {
+		t.Errorf("stats tab should show a usage gauge, got:\n%s", v)
 	}
 }
 
