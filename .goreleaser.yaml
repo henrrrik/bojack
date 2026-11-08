@@ -31,6 +31,6 @@ archives:
 checksum:
   name_template: checksums.txt
 
-changelog:
-  # Release notes come from CHANGELOG.md (see the release workflow).
-  disable: true
+# Release notes come from CHANGELOG.md: the release workflow passes that
+# version's section with --release-notes. Don't set changelog.disable, which
+# also drops the --release-notes file (v0.1.0 went out with empty notes).
