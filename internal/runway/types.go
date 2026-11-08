@@ -1,6 +1,10 @@
 package runway
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"sort"
+	"strings"
+)
 
 // App represents a Runway application.
 type App struct {
@@ -93,39 +97,75 @@ type LogEntry struct {
 	Type    string `json:"type"`
 }
 
-// AppStats is the response from "app stats -o json".
-type AppStats struct {
-	All    []StatsEntry `json:"all"`
-	Latest StatsValues  `json:"latest"`
+// AppStats is the response from "app stats -o json": a set of metric series
+// keyed by metric name (e.g. "cpu", "ram", "hdd_ephemeral_app", "net_in").
+// The set of keys varies by app, so it is modelled as a map.
+type AppStats map[string]StatsMetric
+
+// StatsMetric is a single metric time series. Values are already in Unit.
+type StatsMetric struct {
+	Title         string       `json:"title"`
+	Unit          string       `json:"unit"`
+	Max           float64      `json:"max"`
+	WarnAbove     float64      `json:"warnAbove"`
+	CriticalAbove float64      `json:"criticalAbove"`
+	Data          []StatsPoint `json:"data"`
 }
 
-type StatsEntry struct {
-	Timestamp int64       `json:"ts"`
-	Values    StatsValues `json:"val"`
+type StatsPoint struct {
+	Timestamp int64   `json:"ts"` // milliseconds since epoch
+	Value     float64 `json:"v"`
 }
 
-type StatsValues struct {
-	RAM StatsRAM `json:"ram"`
-	CPU StatsCPU `json:"cpu"`
-	HDD StatsHDD `json:"hdd"`
-	Net StatsNet `json:"net"`
+// Latest returns the most recent value, or ok=false if there is no data.
+func (m StatsMetric) Latest() (value float64, ok bool) {
+	if len(m.Data) == 0 {
+		return 0, false
+	}
+	return m.Data[len(m.Data)-1].Value, true
 }
 
-type StatsRAM struct {
-	UsedBytes float64 `json:"used_bytes"`
+// Values returns the series values in order.
+func (m StatsMetric) Values() []float64 {
+	values := make([]float64, len(m.Data))
+	for i, p := range m.Data {
+		values[i] = p.Value
+	}
+	return values
 }
 
-type StatsCPU struct {
-	Load float64 `json:"load"`
+// OrderedKeys returns the metric keys in display order: CPU, RAM, disks,
+// network in/out, then anything else alphabetically.
+func (s AppStats) OrderedKeys() []string {
+	keys := make([]string, 0, len(s))
+	for k := range s {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		ri, rj := statsKeyRank(keys[i]), statsKeyRank(keys[j])
+		if ri != rj {
+			return ri < rj
+		}
+		return keys[i] < keys[j]
+	})
+	return keys
 }
 
-type StatsHDD struct {
-	UsedBytes float64 `json:"used_bytes"`
-}
-
-type StatsNet struct {
-	ReceivedBytes    float64 `json:"received_bytes"`
-	TransmittedBytes float64 `json:"transmitted_bytes"`
+func statsKeyRank(key string) int {
+	switch {
+	case key == "cpu":
+		return 0
+	case key == "ram":
+		return 1
+	case strings.HasPrefix(key, "hdd"):
+		return 2
+	case key == "net_in":
+		return 3
+	case key == "net_out":
+		return 4
+	default:
+		return 5
+	}
 }
 
 // AppConfig is a map of environment variable key-value pairs.

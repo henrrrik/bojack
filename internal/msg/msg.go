@@ -49,7 +49,7 @@ type AppProcessesResultMsg struct {
 }
 
 type AppStatsResultMsg struct {
-	Stats *runway.AppStats
+	Stats runway.AppStats
 	Err   error
 }
 

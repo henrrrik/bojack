@@ -8,7 +8,7 @@ command and renders the result, so it sees exactly what the CLI sees.
 ## Features
 
 - **Apps:** list with type, plan, region, role and status. The detail view has tabs for
-  Info, Processes, Stats (CPU, RAM, disk and network sparklines), Config, Domains,
+  Info, Processes, Stats (CPU, memory, disk and network with usage vs. plan limit and sparklines), Config, Domains,
   Sharing and Logs.
 - **Services:** details, DSN, config and backups.
 - **Volumes, Domains, Policies, Regions, Plans:** simple tables.
@@ -17,7 +17,7 @@ command and renders the result, so it sees exactly what the CLI sees.
 
 - Go 1.26+
 - The [`runway` CLI](https://runway.horse) on your `PATH`, logged in (`runway login`).
-  Last checked against runway CLI 1.47.1.
+  Last checked against runway CLI 1.49.0.
 
 ## Install / run
 

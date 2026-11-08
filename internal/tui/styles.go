@@ -15,6 +15,7 @@ type Styles struct {
 	HelpBar     lipgloss.Style
 	StatusUp    lipgloss.Style
 	StatusDown  lipgloss.Style
+	StatusWarn  lipgloss.Style
 	Label       lipgloss.Style
 	Value       lipgloss.Style
 	Sparkline   lipgloss.Style
@@ -50,6 +51,8 @@ func DefaultStyles() Styles {
 			Foreground(lipgloss.Color("46")),
 		StatusDown: lipgloss.NewStyle().
 			Foreground(lipgloss.Color("196")),
+		StatusWarn: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("214")),
 		Label: lipgloss.NewStyle().
 			Foreground(lipgloss.Color("240")).
 			Width(16),
@@ -72,6 +75,7 @@ func (s Styles) DetailStyles() view.DetailStyles {
 		Value:       s.Value,
 		StatusUp:    s.StatusUp,
 		StatusDown:  s.StatusDown,
+		StatusWarn:  s.StatusWarn,
 		Sparkline:   s.Sparkline,
 	}
 }

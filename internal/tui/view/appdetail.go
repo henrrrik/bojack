@@ -2,7 +2,9 @@ package view
 
 import (
 	"fmt"
+	"math"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -25,7 +27,7 @@ type AppDetailModel struct {
 
 	detail    *runway.AppDetail
 	processes []runway.Process
-	stats     *runway.AppStats
+	stats     runway.AppStats
 	config    runway.AppConfig
 	domains   []runway.Domain
 	shares    *runway.AppShareList
@@ -192,42 +194,102 @@ func (m AppDetailModel) renderProcessesTab() string {
 }
 
 func (m AppDetailModel) renderStatsTab() string {
-	if m.stats == nil {
+	if len(m.stats) == 0 {
 		return "No stats available."
 	}
-	l := m.stats.Latest
 	graphWidth := m.width - 4
 	if graphWidth > 60 {
 		graphWidth = 60
 	}
+	keys := m.stats.OrderedKeys()
+	label := m.styles.Label.Width(statsLabelWidth(m.stats, keys, m.styles.Label.GetWidth()))
 	var b strings.Builder
-	row := func(label, value string, series []float64) {
-		b.WriteString(m.styles.Label.Render(label) + m.styles.Value.Render(value) + "\n")
-		if graph := sparkline(series, graphWidth); graph != "" {
+	for _, key := range keys {
+		metric := m.stats[key]
+		title := metric.Title
+		if title == "" {
+			title = key
+		}
+		b.WriteString(label.Render(title+":") + m.renderStatValue(metric) + "\n")
+		if graph := sparkline(metric.Values(), graphWidth); graph != "" {
 			b.WriteString("  " + m.styles.Sparkline.Render(graph) + "\n")
 		}
 		b.WriteString("\n")
 	}
-	all := m.stats.All
-	row("CPU Load:", fmt.Sprintf("%.2f", l.CPU.Load),
-		extractSeries(all, func(v runway.StatsValues) float64 { return v.CPU.Load }))
-	row("RAM Used:", formatBytes(l.RAM.UsedBytes),
-		extractSeries(all, func(v runway.StatsValues) float64 { return v.RAM.UsedBytes }))
-	row("HDD Used:", formatBytes(l.HDD.UsedBytes),
-		extractSeries(all, func(v runway.StatsValues) float64 { return v.HDD.UsedBytes }))
-	row("Net Rx:", formatBytes(l.Net.ReceivedBytes),
-		extractSeries(all, func(v runway.StatsValues) float64 { return v.Net.ReceivedBytes }))
-	row("Net Tx:", formatBytes(l.Net.TransmittedBytes),
-		extractSeries(all, func(v runway.StatsValues) float64 { return v.Net.TransmittedBytes }))
 	return b.String()
 }
 
-func extractSeries(entries []runway.StatsEntry, fn func(runway.StatsValues) float64) []float64 {
-	values := make([]float64, len(entries))
-	for i, e := range entries {
-		values[i] = fn(e.Values)
+// statsLabelWidth widens the label column to fit the longest metric title.
+func statsLabelWidth(stats runway.AppStats, keys []string, min int) int {
+	w := min
+	for _, k := range keys {
+		title := stats[k].Title
+		if title == "" {
+			title = k
+		}
+		if n := len(title) + 2; n > w {
+			w = n
+		}
 	}
-	return values
+	return w
+}
+
+func (m AppDetailModel) renderStatValue(metric runway.StatsMetric) string {
+	latest, ok := metric.Latest()
+	if !ok {
+		return m.styles.Value.Render("no data")
+	}
+	text := formatStatValue(latest)
+	if metric.Max > 0 {
+		text += " / " + formatStatValue(metric.Max)
+	}
+	if metric.Unit != "" {
+		text += " " + metric.Unit
+	}
+	switch statLevelFor(metric, latest) {
+	case levelCritical:
+		return m.styles.StatusDown.Render(text)
+	case levelWarn:
+		return m.styles.StatusWarn.Render(text)
+	default:
+		return m.styles.Value.Render(text)
+	}
+}
+
+type statLevel int
+
+const (
+	levelOK statLevel = iota
+	levelWarn
+	levelCritical
+)
+
+// statLevelFor classifies v against the metric's thresholds. A zero
+// threshold means it is not set.
+func statLevelFor(metric runway.StatsMetric, v float64) statLevel {
+	switch {
+	case metric.CriticalAbove > 0 && v > metric.CriticalAbove:
+		return levelCritical
+	case metric.WarnAbove > 0 && v > metric.WarnAbove:
+		return levelWarn
+	default:
+		return levelOK
+	}
+}
+
+// formatStatValue formats a metric value compactly: whole numbers at 100+,
+// one decimal at 1+, and three significant digits below that.
+func formatStatValue(v float64) string {
+	switch {
+	case v == 0:
+		return "0"
+	case math.Abs(v) >= 100:
+		return strconv.FormatFloat(v, 'f', 0, 64)
+	case math.Abs(v) >= 1:
+		return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64)
+	default:
+		return strconv.FormatFloat(v, 'g', 3, 64)
+	}
 }
 
 var sparkBlocks = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
@@ -309,22 +371,4 @@ func (m AppDetailModel) renderLogsTab() string {
 		b.WriteString(fmt.Sprintf("  %s  [%s]  %s\n", entry.Time, entry.Type, entry.Content))
 	}
 	return b.String()
-}
-
-func formatBytes(b float64) string {
-	const (
-		kb = 1024.0
-		mb = kb * 1024
-		gb = mb * 1024
-	)
-	switch {
-	case b >= gb:
-		return fmt.Sprintf("%.1f GB", b/gb)
-	case b >= mb:
-		return fmt.Sprintf("%.1f MB", b/mb)
-	case b >= kb:
-		return fmt.Sprintf("%.1f KB", b/kb)
-	default:
-		return fmt.Sprintf("%.0f B", b)
-	}
 }

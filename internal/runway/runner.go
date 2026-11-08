@@ -16,7 +16,7 @@ type Runner interface {
 	AppList(ctx context.Context) ([]AppListEntry, error)
 	AppShow(ctx context.Context, appName string) (*AppDetail, error)
 	AppProcesses(ctx context.Context, appName string) ([]Process, error)
-	AppStats(ctx context.Context, appName string) (*AppStats, error)
+	AppStats(ctx context.Context, appName string) (AppStats, error)
 	AppConfig(ctx context.Context, appName string) (AppConfig, error)
 	AppDomains(ctx context.Context, appName string) ([]Domain, error)
 	AppShares(ctx context.Context, appName string) (*AppShareList, error)
@@ -70,8 +70,8 @@ func (r *CLIRunner) AppProcesses(ctx context.Context, appName string) ([]Process
 	return runJSON[[]Process](ctx, r.exec, "app", "ps", "-a", appName, "-o", "json")
 }
 
-func (r *CLIRunner) AppStats(ctx context.Context, appName string) (*AppStats, error) {
-	return runJSONPtr[AppStats](ctx, r.exec, "app", "stats", "-a", appName, "-o", "json")
+func (r *CLIRunner) AppStats(ctx context.Context, appName string) (AppStats, error) {
+	return runJSON[AppStats](ctx, r.exec, "app", "stats", "-a", appName, "-o", "json")
 }
 
 func (r *CLIRunner) AppConfig(ctx context.Context, appName string) (AppConfig, error) {
