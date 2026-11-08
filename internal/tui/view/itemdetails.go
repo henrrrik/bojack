@@ -27,7 +27,15 @@ func templateFields(t runway.Template) []field {
 
 // NewVolumeDetailModel shows one volume.
 func NewVolumeDetailModel(name string, styles DetailStyles, width, height int) ItemModel[runway.Volume] {
-	return NewItemModel("volume", name, volumeFields, styles, width, height)
+	return NewItemModel("volume", name, volumeFields, styles, width, height).WithActions(volumeActions)
+}
+
+// volumeActions offers resizing when the volume allows it.
+func volumeActions(v runway.Volume) []actionSpec {
+	if !v.Resizable {
+		return nil
+	}
+	return []actionSpec{resizeVolumeAction(v.SizeMB)}
 }
 
 func volumeFields(v runway.Volume) []field {

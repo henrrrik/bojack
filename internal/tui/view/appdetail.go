@@ -14,6 +14,7 @@ import (
 var appTabs = []string{"Info", "Processes", "Stats", "Config", "Domains", "Sharing", "Logs"}
 
 const (
+	appInfoTab   = 0
 	appStatsTab  = 2
 	appConfigTab = 3
 	appLogsTab   = 6
@@ -168,7 +169,7 @@ func (m AppDetailModel) applyLogs(r msg.AppLogsResultMsg) AppDetailModel {
 }
 
 func (m AppDetailModel) handleKey(k tea.KeyMsg) (AppDetailModel, tea.Cmd) {
-	if p, cmd, ok := m.actions.handleKey(k.String(), m.appName); ok {
+	if p, cmd, ok := m.actions.handleKey(k, m.appName, m.tabActions()...); ok {
 		m.actions = p
 		return m, cmd
 	}
@@ -181,6 +182,23 @@ func (m AppDetailModel) handleKey(k tea.KeyMsg) (AppDetailModel, tea.Cmd) {
 		return m.tabKey(k.String())
 	}
 	return m, nil
+}
+
+// tabActions are the actions offered on the active tab only.
+func (m AppDetailModel) tabActions() []actionSpec {
+	switch m.activeTab {
+	case appInfoTab:
+		return []actionSpec{appPlanAction}
+	case appConfigTab:
+		return appConfigActions
+	}
+	return nil
+}
+
+// ClaimsKey claims every key while an action is asking for input or
+// confirmation.
+func (m AppDetailModel) ClaimsKey(string) bool {
+	return m.actions.claimsKeys()
 }
 
 // tabKey handles keys specific to the active tab.
@@ -233,7 +251,7 @@ func (m AppDetailModel) View() string {
 		b.WriteString(m.follow.banner(m.styles) + "\n\n")
 	}
 	b.WriteString(m.actions.withStatus(m.renderActiveTab(), m.styles))
-	help := append([]string{"tab: switch tab", "o: open"}, m.actions.help()...)
+	help := append([]string{"tab: switch tab", "o: open"}, m.actions.help(m.tabActions()...)...)
 	help = append(help, "esc: back")
 	if m.isLiveTab() {
 		help = append([]string{m.follow.help()}, help...)

@@ -132,7 +132,7 @@ func (m ServiceDetailModel) applyStats(stats runway.Stats, interval string, err 
 }
 
 func (m ServiceDetailModel) handleKey(k tea.KeyMsg) (ServiceDetailModel, tea.Cmd) {
-	if p, cmd, ok := m.actions.handleKey(k.String(), m.name); ok {
+	if p, cmd, ok := m.actions.handleKey(k, m.name, m.tabActions()...); ok {
 		m.actions = p
 		return m, cmd
 	}
@@ -145,6 +145,20 @@ func (m ServiceDetailModel) handleKey(k tea.KeyMsg) (ServiceDetailModel, tea.Cmd
 		return m.tabKey(k.String())
 	}
 	return m, nil
+}
+
+// tabActions are the actions offered on the active tab only.
+func (m ServiceDetailModel) tabActions() []actionSpec {
+	if m.activeTab == serviceConfigTab {
+		return serviceConfigActions
+	}
+	return nil
+}
+
+// ClaimsKey claims every key while an action is asking for input or
+// confirmation.
+func (m ServiceDetailModel) ClaimsKey(string) bool {
+	return m.actions.claimsKeys()
 }
 
 // tabKey handles keys specific to the active tab.
@@ -181,7 +195,7 @@ func (m ServiceDetailModel) View() string {
 		b.WriteString(m.follow.banner(m.styles) + "\n\n")
 	}
 	b.WriteString(m.actions.withStatus(m.renderActiveTab(), m.styles))
-	help := append([]string{"tab: switch tab"}, m.actions.help()...)
+	help := append([]string{"tab: switch tab"}, m.actions.help(m.tabActions()...)...)
 	help = append(help, "esc: back")
 	switch m.activeTab {
 	case serviceStatsTab:

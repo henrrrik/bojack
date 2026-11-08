@@ -2,6 +2,8 @@ package tui
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -91,12 +93,33 @@ func itemView[T any](
 	}
 }
 
+// actionRunner performs an action on target, with the typed arg if it takes one.
+type actionRunner func(r runway.Runner, ctx context.Context, target, arg string) error
+
 // actionRunners maps each action to the Runner method that performs it.
-var actionRunners = map[msg.ActionKind]func(runway.Runner, context.Context, string) error{
-	msg.ActionRestartApp:     runway.Runner.AppRestart,
-	msg.ActionRestartService: runway.Runner.ServiceRestart,
-	msg.ActionCreateBackup:   runway.Runner.ServiceBackupCreate,
-	msg.ActionVerifyDomain:   runway.Runner.DomainVerify,
+var actionRunners = map[msg.ActionKind]actionRunner{
+	msg.ActionRestartApp:          noArg(runway.Runner.AppRestart),
+	msg.ActionRestartService:      noArg(runway.Runner.ServiceRestart),
+	msg.ActionCreateBackup:        noArg(runway.Runner.ServiceBackupCreate),
+	msg.ActionVerifyDomain:        noArg(runway.Runner.DomainVerify),
+	msg.ActionSetAppConfig:        runway.Runner.AppConfigSet,
+	msg.ActionRemoveAppConfig:     runway.Runner.AppConfigRm,
+	msg.ActionSetServiceConfig:    runway.Runner.ServiceConfigSet,
+	msg.ActionRemoveServiceConfig: runway.Runner.ServiceConfigRm,
+	msg.ActionSetAppPlan:          runway.Runner.AppPlanSet,
+	msg.ActionResizeVolume:        resizeVolume,
+}
+
+func noArg(f func(runway.Runner, context.Context, string) error) actionRunner {
+	return func(r runway.Runner, ctx context.Context, target, _ string) error { return f(r, ctx, target) }
+}
+
+func resizeVolume(r runway.Runner, ctx context.Context, name, size string) error {
+	n, err := strconv.Atoi(size)
+	if err != nil {
+		return fmt.Errorf("invalid size %q: %w", size, err)
+	}
+	return r.VolumeSet(ctx, name, n)
 }
 
 // NewModel creates the root model.
@@ -198,9 +221,16 @@ func (m Model) handleGlobalKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // viewClaimsKey reports whether the current view wants key before the global
-// bindings, e.g. while the user types a filter.
+// bindings, e.g. while the user types a filter or an action's value.
 func (m Model) viewClaimsKey(key string) bool {
-	c, ok := m.leaves[m.currentView].(view.KeyClaimer)
+	var v any = m.leaves[m.currentView]
+	switch m.currentView {
+	case msg.ViewAppDetail:
+		v = m.appDetail
+	case msg.ViewServiceDetail:
+		v = m.serviceDetail
+	}
+	c, ok := v.(view.KeyClaimer)
 	return ok && c.ClaimsKey(key)
 }
 
@@ -251,7 +281,7 @@ func (m Model) handleLogOptions(lo msg.LogOptionsMsg) (tea.Model, tea.Cmd) {
 func (m Model) actionCmd(req msg.ActionRequestMsg) tea.Cmd {
 	r, run := m.runner, actionRunners[req.Kind]
 	return func() tea.Msg {
-		return msg.ActionResultMsg{Kind: req.Kind, Target: req.Target, Err: run(r, view.CmdContext(), req.Target)}
+		return msg.ActionResultMsg{Kind: req.Kind, Target: req.Target, Err: run(r, view.CmdContext(), req.Target, req.Arg)}
 	}
 }
 

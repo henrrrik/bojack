@@ -15,10 +15,10 @@ type KeyClaimer interface {
 	ClaimsKey(key string) bool
 }
 
-// ClaimsKey claims every key while a filter is being typed, and esc (to clear
-// it) while one is applied.
+// ClaimsKey claims every key while a filter is being typed or an action asks
+// for confirmation, and esc (to clear it) while a filter is applied.
 func (m ListModel[T]) ClaimsKey(k string) bool {
-	return m.filtering || (m.filter != "" && k == "esc")
+	return m.filtering || m.actions.claimsKeys() || (m.filter != "" && k == "esc")
 }
 
 // startFilter enters filter-typing mode.

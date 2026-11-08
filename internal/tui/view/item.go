@@ -20,6 +20,9 @@ type ItemModel[T any] struct {
 	noun   string // singular, e.g. "template"
 	name   string
 	fields func(T) []field
+	// itemActions, if set, lists the actions offered on the loaded item.
+	itemActions func(T) []actionSpec
+	actions     actionPrompt
 
 	item    *T
 	err     error
@@ -41,6 +44,26 @@ func NewItemModel[T any](noun, name string, fields func(T) []field,
 	}
 }
 
+// WithActions offers the actions itemActions returns for the loaded item.
+func (m ItemModel[T]) WithActions(itemActions func(T) []actionSpec) ItemModel[T] {
+	m.itemActions = itemActions
+	return m
+}
+
+// currentActions are the actions offered on the loaded item.
+func (m ItemModel[T]) currentActions() []actionSpec {
+	if m.item == nil || m.itemActions == nil || m.err != nil {
+		return nil
+	}
+	return m.itemActions(*m.item)
+}
+
+// ClaimsKey claims every key while an action is asking for input or
+// confirmation.
+func (m ItemModel[T]) ClaimsKey(string) bool {
+	return m.actions.claimsKeys()
+}
+
 func (m ItemModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
 	switch teaMsg := teaMsg.(type) {
 	case tea.WindowSizeMsg:
@@ -48,6 +71,14 @@ func (m ItemModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
 	case msg.ItemResultMsg[T]:
 		m.loading, m.item, m.err = false, teaMsg.Item, teaMsg.Err
 		return m, nil
+	case msg.ActionResultMsg:
+		m.actions = m.actions.apply(teaMsg)
+		return m, nil
+	case tea.KeyMsg:
+		if p, cmd, ok := m.actions.handleKey(teaMsg, m.name, m.currentActions()...); ok {
+			m.actions = p
+			return m, cmd
+		}
 	}
 	var cmd tea.Cmd
 	if m.loading {
@@ -65,9 +96,10 @@ func (m ItemModel[T]) View() string {
 	case m.err != nil:
 		b.WriteString(m.styles.Error.Render("Error: "+m.err.Error()) + "\n")
 	case m.item != nil:
-		b.WriteString(m.renderFields(m.fields(*m.item)))
+		b.WriteString(m.actions.withStatus(m.renderFields(m.fields(*m.item)), m.styles))
 	}
-	b.WriteString("\n" + renderHelp(m.styles.HelpBar, "r: refresh", "esc: back"))
+	help := append([]string{"r: refresh"}, m.actions.help(m.currentActions()...)...)
+	b.WriteString("\n" + renderHelp(m.styles.HelpBar, append(help, "esc: back")...))
 	return b.String()
 }
 
