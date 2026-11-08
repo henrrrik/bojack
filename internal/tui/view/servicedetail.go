@@ -1,6 +1,7 @@
 package view
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -35,7 +36,7 @@ type ServiceDetailModel struct {
 	service *runway.Service
 	stats   runway.Stats
 	config  runway.ServiceConfig
-	backups string
+	backups json.RawMessage
 	dsn     runway.ServiceDSN
 
 	loaded [5]bool
@@ -84,7 +85,7 @@ func (m ServiceDetailModel) Update(teaMsg tea.Msg) (ServiceDetailModel, tea.Cmd)
 		m.errors[serviceConfigTab] = teaMsg.Err
 	case msg.ServiceBackupsResultMsg:
 		m.loaded[serviceBackupsTab] = true
-		m.backups = string(teaMsg.Backups)
+		m.backups = teaMsg.Backups
 		m.errors[serviceBackupsTab] = teaMsg.Err
 	case msg.ServiceDSNResultMsg:
 		m.loaded[serviceDSNTab] = true
@@ -223,10 +224,7 @@ func (m ServiceDetailModel) renderConfigTab() string {
 }
 
 func (m ServiceDetailModel) renderBackupsTab() string {
-	if m.backups == "" || m.backups == "[]" || m.backups == "null" {
-		return "No backups found."
-	}
-	return m.backups
+	return renderBackups(m.backups)
 }
 
 func (m ServiceDetailModel) renderDSNTab() string {
