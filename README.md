@@ -1,15 +1,4 @@
-```
-              __/\
-           __/    \
-     ~~~ _/   o    \_
-    ~~~ /            \___
-   ~~~ /     _          .)
-  ~~~ /     / `--------'
- ~~~ /     /
-~~~ |     |
-```
-
-# Bojack - Runway Manager
+# Bojack - Runway Manager 🐴
 
 `bojack` is a terminal UI for managing your [Runway](https://runway.horse) apps and services.
 
