@@ -199,7 +199,7 @@ func TestStatsTabOrdersMetrics(t *testing.T) {
 	})
 	v := m.View()
 	cpu, ram, net := strings.Index(v, "CPU"), strings.Index(v, "Memory"), strings.Index(v, "Network (out)")
-	if cpu < 0 || ram < 0 || net < 0 || !(cpu < ram && ram < net) {
+	if cpu < 0 || ram < 0 || net < 0 || cpu >= ram || ram >= net {
 		t.Errorf("metrics out of order (cpu=%d ram=%d net=%d):\n%s", cpu, ram, net, v)
 	}
 }
