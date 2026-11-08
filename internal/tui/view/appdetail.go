@@ -268,15 +268,15 @@ func (m AppDetailModel) renderProcessesTab() string {
 	if len(m.processes) == 0 {
 		return "No processes running."
 	}
-	var b strings.Builder
-	for _, p := range m.processes {
+	rows := make([][]string, len(m.processes))
+	for i, p := range m.processes {
 		state := m.styles.StatusUp.Render(p.State)
 		if p.State != "up" {
 			state = m.styles.StatusDown.Render(p.State)
 		}
-		fmt.Fprintf(&b, "  %s  %s  %s  %s  %s\n", p.Name, p.Type, p.Release, state, p.Started)
+		rows[i] = []string{p.Name, p.Type, p.Release, state, p.Started}
 	}
-	return b.String()
+	return textTable([]string{"Name", "Type", "Release", "State", "Started"}, rows)
 }
 
 func (m AppDetailModel) renderConfigTab() string {
@@ -287,22 +287,27 @@ func (m AppDetailModel) renderDomainsTab() string {
 	if len(m.domains) == 0 {
 		return "No domains configured."
 	}
-	var b strings.Builder
-	for _, d := range m.domains {
-		fmt.Fprintf(&b, "  %s  path=%s  deletable=%v\n", d.Domain, d.Path, d.Deletable)
+	rows := make([][]string, len(m.domains))
+	for i, d := range m.domains {
+		// Runway's default domain (e.g. *.pqapp.dev) has no root domain record.
+		root, verified := "-", "-"
+		if d.Root.Domain != "" {
+			root, verified = d.Root.Domain, yesNo(d.Root.Verified)
+		}
+		rows[i] = []string{d.Domain, orDash(d.Path), orDash(d.TargetPath), root, verified, yesNo(d.Deletable)}
 	}
-	return b.String()
+	return textTable([]string{"Domain", "Path", "Target", "Root", "Verified", "Removable"}, rows)
 }
 
 func (m AppDetailModel) renderSharingTab() string {
 	if m.shares == nil || len(m.shares.Data) == 0 {
 		return "No shares configured."
 	}
-	var b strings.Builder
-	for _, s := range m.shares.Data {
-		fmt.Fprintf(&b, "  %s  (%s)\n", s.User, s.Role)
+	rows := make([][]string, len(m.shares.Data))
+	for i, sh := range m.shares.Data {
+		rows[i] = []string{sh.User, sh.Role}
 	}
-	return b.String()
+	return textTable([]string{"User", "Role"}, rows)
 }
 
 func (m AppDetailModel) renderLogsTab() string {

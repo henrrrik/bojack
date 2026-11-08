@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 // The backup schema of "service backup ls -o json" is not documented, so
@@ -18,8 +15,6 @@ import (
 // backupColumnOrder lists keys shown first, in this order; other keys follow
 // alphabetically.
 var backupColumnOrder = []string{"name", "id", "created", "status", "size"}
-
-const maxBackupCellWidth = 40
 
 func renderBackups(raw json.RawMessage) string {
 	items, ok := backupItems(raw)
@@ -105,43 +100,6 @@ func formatBackupValue(v any) string {
 		}
 		return string(b)
 	}
-}
-
-// textTable renders a plain left-aligned table with a header row.
-func textTable(header []string, rows [][]string) string {
-	widths := make([]int, len(header))
-	for i, h := range header {
-		widths[i] = lipgloss.Width(h)
-	}
-	for _, r := range rows {
-		for i, c := range r {
-			widths[i] = max(widths[i], min(lipgloss.Width(c), maxBackupCellWidth))
-		}
-	}
-	var b strings.Builder
-	writeRow := func(cells []string) {
-		for i, c := range cells {
-			if i > 0 {
-				b.WriteString("  ")
-			}
-			c = truncate(c, widths[i])
-			b.WriteString(c + strings.Repeat(" ", widths[i]-lipgloss.Width(c)))
-		}
-		b.WriteString("\n")
-	}
-	writeRow(header)
-	for _, r := range rows {
-		writeRow(r)
-	}
-	return b.String()
-}
-
-func truncate(s string, width int) string {
-	if lipgloss.Width(s) <= width {
-		return s
-	}
-	r := []rune(s)
-	return string(r[:width-1]) + "…"
 }
 
 func prettyJSON(raw json.RawMessage) string {
