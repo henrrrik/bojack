@@ -37,11 +37,6 @@ type NavigateBackMsg struct{}
 
 // Result messages carry data from async fetches.
 
-type AppListResultMsg struct {
-	Apps []runway.AppListEntry
-	Err  error
-}
-
 type AppDetailResultMsg struct {
 	Detail *runway.AppDetail
 	Err    error
@@ -98,11 +93,6 @@ type AppLogsResultMsg struct {
 // detail view with new options.
 type LogOptionsMsg struct {
 	Options runway.LogOptions
-}
-
-type ServiceListResultMsg struct {
-	Services []runway.Service
-	Err      error
 }
 
 type ServiceDetailResultMsg struct {

@@ -28,9 +28,7 @@ type Model struct {
 	logOptions runway.LogOptions
 
 	mainMenu      view.MainMenuModel
-	appList       view.AppListModel
 	appDetail     view.AppDetailModel
-	serviceList   view.ServiceListModel
 	serviceDetail view.ServiceDetailModel
 	// list is the current generic list view (see listViews).
 	list view.Viewer
@@ -38,6 +36,8 @@ type Model struct {
 
 // listViews builds the generic list views and the command that fills them.
 var listViews = map[msg.ViewID]func(m Model) (view.Viewer, tea.Cmd){
+	msg.ViewAppList:      listView(view.NewAppListModel, runway.Runner.AppList),
+	msg.ViewServiceList:  listView(view.NewServiceListModel, runway.Runner.ServiceList),
 	msg.ViewVolumeList:   listView(view.NewVolumeListModel, runway.Runner.VolumeList),
 	msg.ViewDomainList:   listView(view.NewDomainListModel, runway.Runner.DomainList),
 	msg.ViewPolicyList:   listView(view.NewPolicyListModel, runway.Runner.PolicyList),
@@ -104,12 +104,8 @@ func (m Model) View() string {
 	switch m.currentView {
 	case msg.ViewMainMenu:
 		return m.mainMenu.View()
-	case msg.ViewAppList:
-		return m.appList.View()
 	case msg.ViewAppDetail:
 		return m.appDetail.View()
-	case msg.ViewServiceList:
-		return m.serviceList.View()
 	case msg.ViewServiceDetail:
 		return m.serviceDetail.View()
 	default:
@@ -221,17 +217,11 @@ func (m Model) initView(v msg.ViewID, param string) (Model, tea.Cmd) {
 	}
 	ctx := view.CmdContext()
 	switch v {
-	case msg.ViewAppList:
-		m.appList = view.NewAppListModel(m.styles.HelpBar, m.width, m.height)
-		return m, view.FetchAppList(ctx, m.runner)
 	case msg.ViewAppDetail:
 		m.appDetail = view.NewAppDetailModel(param, m.styles.DetailStyles(), m.width, m.height).
 			WithStatsInterval(m.statsInterval).
 			WithLogOptions(m.logOptions)
 		return m, view.FetchAppDetail(ctx, m.runner, param, m.statsInterval, m.logOptions)
-	case msg.ViewServiceList:
-		m.serviceList = view.NewServiceListModel(m.styles.HelpBar, m.width, m.height)
-		return m, view.FetchServiceList(ctx, m.runner)
 	case msg.ViewServiceDetail:
 		m.serviceDetail = view.NewServiceDetailModel(param, m.styles.DetailStyles(), m.width, m.height).
 			WithStatsInterval(m.statsInterval)
@@ -245,12 +235,8 @@ func (m Model) updateCurrentView(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.currentView {
 	case msg.ViewMainMenu:
 		m.mainMenu, cmd = m.mainMenu.Update(teaMsg)
-	case msg.ViewAppList:
-		m.appList, cmd = m.appList.Update(teaMsg)
 	case msg.ViewAppDetail:
 		m.appDetail, cmd = m.appDetail.Update(teaMsg)
-	case msg.ViewServiceList:
-		m.serviceList, cmd = m.serviceList.Update(teaMsg)
 	case msg.ViewServiceDetail:
 		m.serviceDetail, cmd = m.serviceDetail.Update(teaMsg)
 	default:

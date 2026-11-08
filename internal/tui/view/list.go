@@ -21,6 +21,8 @@ type ListModel[T any] struct {
 	noun    string // plural, e.g. "templates"
 	columns []table.Column
 	row     func(T) table.Row
+	// onSelect, if set, builds the message sent when enter is pressed on an item.
+	onSelect func(T) tea.Msg
 
 	table   table.Model
 	spinner spinner.Model
@@ -43,6 +45,22 @@ func NewListModel[T any](noun string, columns []table.Column, row func(T) table.
 	}
 }
 
+// WithSelect makes enter on an item send the message built by onSelect.
+func (m ListModel[T]) WithSelect(onSelect func(T) tea.Msg) ListModel[T] {
+	m.onSelect = onSelect
+	return m
+}
+
+// selected returns the item under the table cursor.
+func (m ListModel[T]) selected() (T, bool) {
+	var zero T
+	i := m.table.Cursor()
+	if m.loading || i < 0 || i >= len(m.items) {
+		return zero, false
+	}
+	return m.items[i], true
+}
+
 func (m ListModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
 	switch teaMsg := teaMsg.(type) {
 	case tea.WindowSizeMsg:
@@ -53,6 +71,12 @@ func (m ListModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
 			m.table = m.buildTable()
 		}
 		return m, nil
+	case tea.KeyMsg:
+		if teaMsg.String() == "enter" && m.onSelect != nil {
+			if item, ok := m.selected(); ok {
+				return m, func() tea.Msg { return m.onSelect(item) }
+			}
+		}
 	}
 	var cmd tea.Cmd
 	if m.loading {
@@ -73,7 +97,11 @@ func (m ListModel[T]) View() string {
 	case len(m.items) == 0:
 		return "No " + m.noun + " found.\n\n" + renderHelp(m.helpBar, "r: refresh", "esc: back")
 	}
-	return m.table.View() + "\n" + renderHelp(m.helpBar, "r: refresh", "esc: back")
+	help := []string{"r: refresh", "esc: back"}
+	if m.onSelect != nil {
+		help = append([]string{"enter: details"}, help...)
+	}
+	return m.table.View() + "\n" + renderHelp(m.helpBar, help...)
 }
 
 func (m ListModel[T]) buildTable() table.Model {
@@ -100,4 +128,14 @@ func FetchList[T any](ctx context.Context, fetch func(context.Context) ([]T, err
 		items, err := fetch(ctx)
 		return msg.ListResultMsg[T]{Items: items, Err: err}
 	}
+}
+
+// tableHeight sizes a table to the terminal, but at least tall enough for all rows.
+func tableHeight(termHeight, numRows int) int {
+	h := termHeight - 4
+	minH := numRows + 1
+	if h < minH {
+		h = minH
+	}
+	return h
 }
