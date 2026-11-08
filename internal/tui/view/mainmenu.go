@@ -6,6 +6,9 @@ import (
 	"github.com/henrrrik/bojack/internal/msg"
 )
 
+// AppTitle names the app on the main menu and in the terminal title.
+const AppTitle = "Bojack - Runway Manager"
+
 type menuItem struct {
 	title string
 	desc  string
@@ -87,7 +90,7 @@ func (m MainMenuModel) View() string {
 		PaddingLeft(1).
 		MarginTop(1)
 
-	s := titleStyle.Render("Runway TUI") + "\n\n"
+	s := titleStyle.Render(AppTitle) + "\n\n"
 
 	for i, item := range menuItems {
 		if i == m.cursor {

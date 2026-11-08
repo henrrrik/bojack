@@ -11,7 +11,7 @@ import (
 func TestMainMenuRender(t *testing.T) {
 	m := NewMainMenuModel()
 	v := m.View()
-	if !strings.Contains(v, "Runway TUI") {
+	if !strings.Contains(v, "Bojack - Runway Manager") {
 		t.Error("View should contain title")
 	}
 	if !strings.Contains(v, "Apps") {

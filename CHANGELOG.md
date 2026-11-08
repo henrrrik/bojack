@@ -6,6 +6,10 @@ All notable changes to bojack. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The main menu and the terminal title say "Bojack - Runway Manager".
+
 ## [0.1.0] - 2026-11-08
 
 First release. Checked against runway CLI 1.49.0.
