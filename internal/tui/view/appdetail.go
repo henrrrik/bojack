@@ -186,7 +186,7 @@ func (m AppDetailModel) renderProcessesTab() string {
 		if p.State != "up" {
 			state = m.styles.StatusDown.Render(p.State)
 		}
-		b.WriteString(fmt.Sprintf("  %s  %s  %s  %s  %s\n", p.Name, p.Type, p.Release, state, p.Started))
+		fmt.Fprintf(&b, "  %s  %s  %s  %s  %s\n", p.Name, p.Type, p.Release, state, p.Started)
 	}
 	return b.String()
 }
@@ -284,7 +284,7 @@ func (m AppDetailModel) renderDomainsTab() string {
 	}
 	var b strings.Builder
 	for _, d := range m.domains {
-		b.WriteString(fmt.Sprintf("  %s  path=%s  deletable=%v\n", d.Domain, d.Path, d.Deletable))
+		fmt.Fprintf(&b, "  %s  path=%s  deletable=%v\n", d.Domain, d.Path, d.Deletable)
 	}
 	return b.String()
 }
@@ -295,7 +295,7 @@ func (m AppDetailModel) renderSharingTab() string {
 	}
 	var b strings.Builder
 	for _, s := range m.shares.Data {
-		b.WriteString(fmt.Sprintf("  %s  (%s)\n", s.User, s.Role))
+		fmt.Fprintf(&b, "  %s  (%s)\n", s.User, s.Role)
 	}
 	return b.String()
 }
@@ -306,7 +306,7 @@ func (m AppDetailModel) renderLogsTab() string {
 	}
 	var b strings.Builder
 	for _, entry := range m.logs {
-		b.WriteString(fmt.Sprintf("  %s  [%s]  %s\n", entry.Time, entry.Type, entry.Content))
+		fmt.Fprintf(&b, "  %s  [%s]  %s\n", entry.Time, entry.Type, entry.Content)
 	}
 	return b.String()
 }
