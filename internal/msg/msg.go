@@ -144,3 +144,9 @@ type ActionResultMsg struct {
 	Target string
 	Err    error
 }
+
+// FollowTickMsg is a periodic tick for an auto-refreshing ("following") view.
+// ID identifies the follow session, so ticks from an old session are ignored.
+type FollowTickMsg struct {
+	ID int
+}
