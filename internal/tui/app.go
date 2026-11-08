@@ -142,6 +142,9 @@ func (m Model) viewLeaf() string {
 }
 
 func (m Model) handleGlobalKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.viewClaimsKey(k.String()) {
+		return m.updateCurrentView(k)
+	}
 	switch {
 	case key.Matches(k, m.keys.Quit):
 		if m.currentView == msg.ViewMainMenu {
@@ -158,6 +161,16 @@ func (m Model) handleGlobalKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleOpen()
 	}
 	return m.updateCurrentView(k)
+}
+
+// viewClaimsKey reports whether the current view wants key before the global
+// bindings, e.g. while the user types a filter.
+func (m Model) viewClaimsKey(key string) bool {
+	if _, ok := listViews[m.currentView]; !ok {
+		return false
+	}
+	c, ok := m.list.(view.KeyClaimer)
+	return ok && c.ClaimsKey(key)
 }
 
 func (m Model) handleRefresh() (tea.Model, tea.Cmd) {

@@ -46,6 +46,7 @@ go run ./cmd/runway-tui
 | `a` / `b` / `s`     | Logs: toggle app / build / system logs |
 | `t`                 | Logs: cycle time range (all / 1h / 6h / 24h / 7d) |
 | `l`                 | Logs: cycle line limit (100 / 500 / 1000) |
+| `/`                 | Lists: filter rows (enter: apply, esc: clear) |
 | `r`                 | Refresh                      |
 | `o`                 | Open app in browser          |
 | `R`                 | Restart app / service (asks to confirm with `y`) |

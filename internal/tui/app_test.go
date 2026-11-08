@@ -336,3 +336,22 @@ func TestActionSuccessRefetchesList(t *testing.T) {
 		t.Errorf("result should reach the list, got:\n%s", result.View())
 	}
 }
+
+func TestFilterKeysReachListBeforeGlobalKeys(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewTemplateList})
+	result, _ = result.Update(cmd())
+	result = pressKeys(result, "/", "q", "r")
+	m := result.(Model)
+	if m.currentView != msg.ViewTemplateList || !strings.Contains(m.View(), "Filter: qr") {
+		t.Fatalf("q and r should type into the filter, view=%d:\n%s", m.currentView, m.View())
+	}
+	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if m = result.(Model); m.currentView != msg.ViewTemplateList || strings.Contains(m.View(), "Filter:") {
+		t.Fatalf("first esc should clear the filter and stay, view=%d", m.currentView)
+	}
+	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if result.(Model).currentView != msg.ViewMainMenu {
+		t.Error("second esc should go back")
+	}
+}

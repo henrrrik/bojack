@@ -31,10 +31,15 @@ type ListModel[T any] struct {
 	actions      actionPrompt
 	actionTarget func(T) string
 	items        []T
-	loading      bool
-	err          error
-	width        int
-	height       int
+	// visible are the items matching filter, in order; selection and
+	// actions apply to these.
+	visible   []T
+	filter    string
+	filtering bool // typing into the filter
+	loading   bool
+	err       error
+	width     int
+	height    int
 }
 
 // NewListModel creates a list view of T with the given columns and row builder.
@@ -69,7 +74,15 @@ func (m ListModel[T]) selectedTarget() string {
 
 // handleKey runs actions and selection. ok is false if the key is left for
 // the table (navigation).
-func (m ListModel[T]) handleKey(k string) (ListModel[T], tea.Cmd, bool) {
+func (m ListModel[T]) handleKey(km tea.KeyMsg) (ListModel[T], tea.Cmd, bool) {
+	if m.filtering {
+		next, ok := m.filterKeyInput(km)
+		return next, nil, ok
+	}
+	k := km.String()
+	if m.filter != "" && k == "esc" {
+		return m.setFilter(""), nil, true
+	}
 	if p, cmd, ok := m.actions.handleKey(k, m.selectedTarget()); ok {
 		m.actions = p
 		return m, cmd, true
@@ -79,6 +92,9 @@ func (m ListModel[T]) handleKey(k string) (ListModel[T], tea.Cmd, bool) {
 			return m, func() tea.Msg { return m.onSelect(item) }, true
 		}
 	}
+	if k == filterKey && len(m.items) > 0 {
+		return m.startFilter(), nil, true
+	}
 	return m, nil, false
 }
 
@@ -86,10 +102,10 @@ func (m ListModel[T]) handleKey(k string) (ListModel[T], tea.Cmd, bool) {
 func (m ListModel[T]) selected() (T, bool) {
 	var zero T
 	i := m.table.Cursor()
-	if m.loading || i < 0 || i >= len(m.items) {
+	if m.loading || i < 0 || i >= len(m.visible) {
 		return zero, false
 	}
-	return m.items[i], true
+	return m.visible[i], true
 }
 
 func (m ListModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
@@ -99,14 +115,14 @@ func (m ListModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
 	case msg.ListResultMsg[T]:
 		m.loading, m.err, m.items = false, teaMsg.Err, teaMsg.Items
 		if m.err == nil {
-			m.table = m.buildTable()
+			m = m.refilter()
 		}
 		return m, nil
 	case msg.ActionResultMsg:
 		m.actions = m.actions.apply(teaMsg)
 		return m, nil
 	case tea.KeyMsg:
-		if next, cmd, ok := m.handleKey(teaMsg.String()); ok {
+		if next, cmd, ok := m.handleKey(teaMsg); ok {
 			return next, cmd
 		}
 	}
@@ -129,16 +145,19 @@ func (m ListModel[T]) View() string {
 	case len(m.items) == 0:
 		return "No " + m.noun + " found.\n\n" + renderHelp(m.styles.HelpBar, "r: refresh", "esc: back")
 	}
-	help := append(m.actions.help(), "r: refresh", "esc: back")
-	if m.onSelect != nil {
-		help = append([]string{"enter: details"}, help...)
+	body := m.table.View()
+	if len(m.visible) == 0 {
+		body = "No " + m.noun + " match \"" + m.filter + "\"."
 	}
-	return m.actions.withStatus(m.table.View(), m.styles) + "\n" + renderHelp(m.styles.HelpBar, help...)
+	if s := m.filterStatus(); s != "" {
+		body += "\n" + s
+	}
+	return m.actions.withStatus(body, m.styles) + "\n" + renderHelp(m.styles.HelpBar, m.listHelp()...)
 }
 
 func (m ListModel[T]) buildTable() table.Model {
-	rows := make([]table.Row, len(m.items))
-	for i, it := range m.items {
+	rows := make([]table.Row, len(m.visible))
+	for i, it := range m.visible {
 		rows[i] = m.row(it)
 	}
 	t := table.New(
