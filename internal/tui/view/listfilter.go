@@ -3,7 +3,7 @@ package view
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 const filterKey = "/"
@@ -29,20 +29,21 @@ func (m ListModel[T]) startFilter() ListModel[T] {
 
 // filterKeyInput edits the filter while typing. ok is false for keys it
 // leaves to the table, such as arrows to move the selection.
-func (m ListModel[T]) filterKeyInput(k tea.KeyMsg) (ListModel[T], bool) {
-	switch k.Type {
+func (m ListModel[T]) filterKeyInput(k tea.KeyPressMsg) (ListModel[T], bool) {
+	switch k.Code {
 	case tea.KeyEnter:
 		m.filtering = false
-	case tea.KeyEsc:
+	case tea.KeyEscape:
 		return m.setFilter(""), true
 	case tea.KeyBackspace:
 		if r := []rune(m.filter); len(r) > 0 {
 			return m.setFilter(string(r[:len(r)-1])), true
 		}
-	case tea.KeyRunes, tea.KeySpace:
-		return m.setFilter(m.filter + string(k.Runes)), true
 	default:
-		return m, false
+		if k.Text == "" {
+			return m, false
+		}
+		return m.setFilter(m.filter + k.Text), true
 	}
 	return m, true
 }

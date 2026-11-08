@@ -3,7 +3,7 @@ package view
 import (
 	"fmt"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 )
 
@@ -80,7 +80,7 @@ func (p actionPrompt) claimsKeys() bool {
 // it consumes every key. target is what the action would apply to; ""
 // (e.g. an empty list) disables starting one. extra are actions offered in
 // addition to the prompt's own, e.g. for the active tab.
-func (p actionPrompt) handleKey(km tea.KeyMsg, target string, extra ...actionSpec) (actionPrompt, tea.Cmd, bool) {
+func (p actionPrompt) handleKey(km tea.KeyPressMsg, target string, extra ...actionSpec) (actionPrompt, tea.Cmd, bool) {
 	switch p.state {
 	case actionInput:
 		return p.inputKey(km), nil, true
@@ -116,9 +116,9 @@ func (p actionPrompt) start(s actionSpec, target string) actionPrompt {
 }
 
 // inputKey edits the typed value; enter checks it and moves on to confirming.
-func (p actionPrompt) inputKey(km tea.KeyMsg) actionPrompt {
-	switch km.Type {
-	case tea.KeyEsc:
+func (p actionPrompt) inputKey(km tea.KeyPressMsg) actionPrompt {
+	switch km.Code {
+	case tea.KeyEscape:
 		p.state = actionIdle
 	case tea.KeyEnter:
 		return p.submit()
@@ -126,8 +126,16 @@ func (p actionPrompt) inputKey(km tea.KeyMsg) actionPrompt {
 		if r := []rune(p.input); len(r) > 0 {
 			p.input = string(r[:len(r)-1])
 		}
-	case tea.KeyRunes, tea.KeySpace:
-		p.input += string(km.Runes)
+	default:
+		p.input += km.Text
+	}
+	return p
+}
+
+// paste appends pasted text to the value being typed, if any.
+func (p actionPrompt) paste(pm tea.PasteMsg) actionPrompt {
+	if p.state == actionInput {
+		p.input += pm.Content
 	}
 	return p
 }

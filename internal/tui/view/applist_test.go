@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -62,7 +62,7 @@ func TestAppListSelectEmitsNavigate(t *testing.T) {
 	}
 	m, _ = m.Update(msg.ListResultMsg[runway.AppListEntry]{Items: apps})
 
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("expected command on enter")
 	}
@@ -86,7 +86,7 @@ func TestAppListSelectDbNavigatesToServiceDetail(t *testing.T) {
 	}
 	m, _ = m.Update(msg.ListResultMsg[runway.AppListEntry]{Items: apps})
 
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("expected command on enter")
 	}

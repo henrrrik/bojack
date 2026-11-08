@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -92,9 +92,11 @@ func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
 		m.height = teaMsg.Height
 	case msg.ActionResultMsg:
 		m.actions = m.actions.apply(teaMsg)
+	case tea.PasteMsg:
+		m.actions = m.actions.paste(teaMsg)
 	case msg.FollowTickMsg:
 		return m, m.onFollowTick(teaMsg)
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(teaMsg)
 	default:
 		m = m.applyResult(teaMsg)
@@ -169,7 +171,7 @@ func (m AppDetailModel) applyLogs(r msg.AppLogsResultMsg) AppDetailModel {
 	return m
 }
 
-func (m AppDetailModel) handleKey(k tea.KeyMsg) (AppDetailModel, tea.Cmd) {
+func (m AppDetailModel) handleKey(k tea.KeyPressMsg) (AppDetailModel, tea.Cmd) {
 	if p, cmd, ok := m.actions.handleKey(k, m.appName, m.tabActions()...); ok {
 		m.actions = p
 		return m, cmd

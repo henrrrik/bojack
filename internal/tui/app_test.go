@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 	"github.com/henrrrik/runway-tui/internal/tui/view"
@@ -153,7 +153,7 @@ func TestBackOnEmptyStackIsNoop(t *testing.T) {
 
 func TestQuitFromMainMenu(t *testing.T) {
 	m := NewModel(nil)
-	result, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	result, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	_ = result
 	if cmd == nil {
 		t.Fatal("expected quit command, got nil")
@@ -165,7 +165,7 @@ func TestQuitFromSubViewGoesBack(t *testing.T) {
 	m.currentView = msg.ViewAppList
 	m.viewStack = []msg.ViewID{msg.ViewMainMenu}
 	m.paramStack = []string{""}
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	rm := result.(Model)
 	if rm.currentView != msg.ViewMainMenu {
 		t.Errorf("currentView = %d, want ViewMainMenu", rm.currentView)
@@ -290,14 +290,14 @@ func TestNavigateToListViewFetchesAndRenders(t *testing.T) {
 	fake := &fakeStatsRunner{}
 	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewTemplateList})
 	m := result.(Model)
-	if v := m.View(); !strings.Contains(v, "Fetching templates") {
+	if v := m.View().Content; !strings.Contains(v, "Fetching templates") {
 		t.Errorf("view = %q, want loading", v)
 	}
 	if cmd == nil {
 		t.Fatal("expected fetch command")
 	}
 	result, _ = m.Update(cmd())
-	if v := result.(Model).View(); !strings.Contains(v, "valkey") {
+	if v := result.(Model).View().Content; !strings.Contains(v, "valkey") {
 		t.Errorf("view = %q, want template row", v)
 	}
 	if len(fake.calls) != 1 || fake.calls[0] != "templates" {
@@ -340,7 +340,7 @@ func TestActionRequestCallsRunner(t *testing.T) {
 
 func pressKeys(m tea.Model, keys ...string) tea.Model {
 	for _, k := range keys {
-		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)})
+		m, _ = m.Update(tea.KeyPressMsg{Code: []rune(k)[0], Text: k})
 	}
 	return m
 }
@@ -352,8 +352,8 @@ func TestActionSuccessRefetchesDetail(t *testing.T) {
 	if cmd == nil {
 		t.Error("a successful action should refetch the view")
 	}
-	if !strings.Contains(result.View(), "Restarted terry.") {
-		t.Errorf("result should reach the view, got:\n%s", result.View())
+	if !strings.Contains(result.View().Content, "Restarted terry.") {
+		t.Errorf("result should reach the view, got:\n%s", result.View().Content)
 	}
 	if _, cmd = result.Update(msg.ActionResultMsg{Kind: msg.ActionRestartApp, Target: "terry", Err: errors.New("x")}); cmd != nil {
 		t.Error("a failed action should not refetch")
@@ -372,8 +372,8 @@ func TestActionSuccessRefetchesList(t *testing.T) {
 	if _, ok := cmd().(msg.ListResultMsg[runway.RootDomain]); !ok {
 		t.Errorf("refetch should reload domains, got %#v", cmd())
 	}
-	if !strings.Contains(result.View(), "Verification check for example.com done.") {
-		t.Errorf("result should reach the list, got:\n%s", result.View())
+	if !strings.Contains(result.View().Content, "Verification check for example.com done.") {
+		t.Errorf("result should reach the list, got:\n%s", result.View().Content)
 	}
 }
 
@@ -383,14 +383,14 @@ func TestFilterKeysReachListBeforeGlobalKeys(t *testing.T) {
 	result, _ = result.Update(cmd())
 	result = pressKeys(result, "/", "q", "r")
 	m := result.(Model)
-	if m.currentView != msg.ViewTemplateList || !strings.Contains(m.View(), "Filter: qr") {
-		t.Fatalf("q and r should type into the filter, view=%d:\n%s", m.currentView, m.View())
+	if m.currentView != msg.ViewTemplateList || !strings.Contains(m.View().Content, "Filter: qr") {
+		t.Fatalf("q and r should type into the filter, view=%d:\n%s", m.currentView, m.View().Content)
 	}
-	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	if m = result.(Model); m.currentView != msg.ViewTemplateList || strings.Contains(m.View(), "Filter:") {
+	result, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	if m = result.(Model); m.currentView != msg.ViewTemplateList || strings.Contains(m.View().Content, "Filter:") {
 		t.Fatalf("first esc should clear the filter and stay, view=%d", m.currentView)
 	}
-	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	result, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	if result.(Model).currentView != msg.ViewMainMenu {
 		t.Error("second esc should go back")
 	}
@@ -400,22 +400,22 @@ func TestTemplateDetailFromListAndBack(t *testing.T) {
 	fake := &fakeStatsRunner{}
 	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewTemplateList})
 	result, _ = result.Update(cmd())
-	result, cmd = result.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	result, cmd = result.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	result, cmd = result.Update(cmd()) // NavigateMsg to the detail view
 	if m := result.(Model); m.currentView != msg.ViewTemplateDetail || m.currentParam() != "valkey" {
 		t.Fatalf("enter should open the template detail, view=%d param=%q", m.currentView, m.currentParam())
 	}
 	result, _ = result.Update(cmd())
-	if v := result.View(); !strings.Contains(v, "Template: valkey") || !strings.Contains(v, "cache") {
+	if v := result.View().Content; !strings.Contains(v, "Template: valkey") || !strings.Contains(v, "cache") {
 		t.Errorf("detail view should show the template, got:\n%s", v)
 	}
 	if strings.Join(fake.calls, ",") != "templates,template valkey" {
 		t.Errorf("calls = %v", fake.calls)
 	}
-	result, _ = result.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	if m := result.(Model); m.currentView != msg.ViewTemplateList || !strings.Contains(m.View(), "valkey") ||
-		strings.Contains(m.View(), "Template: valkey") {
-		t.Errorf("esc should return to the loaded list, view=%d:\n%s", m.currentView, m.View())
+	result, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	if m := result.(Model); m.currentView != msg.ViewTemplateList || !strings.Contains(m.View().Content, "valkey") ||
+		strings.Contains(m.View().Content, "Template: valkey") {
+		t.Errorf("esc should return to the loaded list, view=%d:\n%s", m.currentView, m.View().Content)
 	}
 }
 
@@ -423,12 +423,12 @@ func TestVolumeDetailRefresh(t *testing.T) {
 	fake := &fakeStatsRunner{}
 	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewVolumeDetail, Param: "data-1"})
 	result, _ = result.Update(cmd())
-	result, cmd = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	result, cmd = result.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	if cmd == nil {
 		t.Fatal("r should refetch the volume")
 	}
 	result, _ = result.Update(cmd())
-	if v := result.View(); !strings.Contains(v, "Volume: data-1") || !strings.Contains(v, "/data") {
+	if v := result.View().Content; !strings.Contains(v, "Volume: data-1") || !strings.Contains(v, "/data") {
 		t.Errorf("view = %q", v)
 	}
 	if strings.Join(fake.calls, ",") != "volume data-1,volume data-1" {
@@ -472,14 +472,14 @@ func TestDetailInputGetsGlobalKeys(t *testing.T) {
 	result, _ := NewModel(&fakeStatsRunner{}).handleNavigate(msg.NavigateMsg{View: msg.ViewAppDetail, Param: "terry"})
 	result = pressKeys(result, "P", "q", "r", "o")
 	m := result.(Model)
-	if m.currentView != msg.ViewAppDetail || !strings.Contains(m.View(), "qro") {
-		t.Fatalf("q, r and o should type into the input, view=%d:\n%s", m.currentView, m.View())
+	if m.currentView != msg.ViewAppDetail || !strings.Contains(m.View().Content, "qro") {
+		t.Fatalf("q, r and o should type into the input, view=%d:\n%s", m.currentView, m.View().Content)
 	}
-	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	if m = result.(Model); m.currentView != msg.ViewAppDetail || strings.Contains(m.View(), "qro") {
+	result, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	if m = result.(Model); m.currentView != msg.ViewAppDetail || strings.Contains(m.View().Content, "qro") {
 		t.Fatalf("esc should cancel the input and stay, view=%d", m.currentView)
 	}
-	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	result, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	if result.(Model).currentView != msg.ViewMainMenu {
 		t.Error("second esc should go back")
 	}
@@ -491,8 +491,8 @@ func TestVolumeResizeRefetches(t *testing.T) {
 	result, _ = result.Update(msg.ItemResultMsg[runway.Volume]{Item: &runway.Volume{Name: "data-1", SizeMB: 100, Resizable: true}})
 	_ = cmd
 	result = pressKeys(result, "S", "200")
-	result, _ = result.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	result, cmd = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")})
+	result, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	result, cmd = result.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	result, cmd = result.Update(cmd())
 	result, cmd = result.Update(cmd()) // ActionResultMsg
 	if cmd == nil {
@@ -501,10 +501,16 @@ func TestVolumeResizeRefetches(t *testing.T) {
 	if _, ok := cmd().(msg.ItemResultMsg[runway.Volume]); !ok {
 		t.Errorf("refetch should reload the volume")
 	}
-	if !strings.Contains(result.View(), "Resized data-1") {
-		t.Errorf("view:\n%s", result.View())
+	if !strings.Contains(result.View().Content, "Resized data-1") {
+		t.Errorf("view:\n%s", result.View().Content)
 	}
 	if strings.Join(fake.calls, ",") != "volume set data-1 200,volume data-1" {
 		t.Errorf("calls = %v", fake.calls)
+	}
+}
+
+func TestViewIsFullScreen(t *testing.T) {
+	if !NewModel(nil).View().AltScreen {
+		t.Error("the TUI should use the alternate screen")
 	}
 }

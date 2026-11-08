@@ -1,8 +1,8 @@
 package view
 
 import (
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 )
 
@@ -43,7 +43,7 @@ func (m MainMenuModel) Update(teaMsg tea.Msg) (MainMenuModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = teaMsg.Width
 		m.height = teaMsg.Height
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch teaMsg.String() {
 		case "up", "k":
 			if m.cursor > 0 {

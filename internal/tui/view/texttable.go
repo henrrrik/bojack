@@ -3,7 +3,7 @@ package view
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // maxTableCellWidth caps column widths in textTable; longer cells are cut

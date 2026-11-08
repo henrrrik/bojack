@@ -21,7 +21,7 @@ command and renders the result, so it sees exactly what the CLI sees.
 
 ## Requirements
 
-- Go 1.26+
+- Go 1.26.8+
 - The [`runway` CLI](https://runway.horse) on your `PATH`, logged in (`runway login`).
   Last checked against runway CLI 1.49.0.
 

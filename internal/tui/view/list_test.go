@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/table"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/table"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -111,8 +111,8 @@ func selectableThings() Viewer {
 }
 
 func TestListSelectUsesCursorItem(t *testing.T) {
-	v := update(selectableThings(), tea.KeyMsg{Type: tea.KeyDown})
-	_, cmd := v.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	v := update(selectableThings(), tea.KeyPressMsg{Code: tea.KeyDown})
+	_, cmd := v.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("expected a command on enter")
 	}
@@ -123,7 +123,7 @@ func TestListSelectUsesCursorItem(t *testing.T) {
 
 func TestListWithoutSelectIgnoresEnter(t *testing.T) {
 	v := update(newThingList(), msg.ListResultMsg[thing]{Items: []thing{{"alpha"}}})
-	if _, cmd := v.Update(tea.KeyMsg{Type: tea.KeyEnter}); cmd != nil {
+	if _, cmd := v.Update(tea.KeyPressMsg{Code: tea.KeyEnter}); cmd != nil {
 		t.Errorf("enter without a select handler should do nothing, got %#v", cmd())
 	}
 	if strings.Contains(v.View(), "enter: details") {

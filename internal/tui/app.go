@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 	"github.com/henrrrik/runway-tui/internal/tui/view"
@@ -159,13 +159,21 @@ func (m Model) Update(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.actionCmd(teaMsg)
 	case msg.ActionResultMsg:
 		return m.handleActionResult(teaMsg)
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleGlobalKey(teaMsg)
 	}
 	return m.updateCurrentView(teaMsg)
 }
 
-func (m Model) View() string {
+// View renders the current view full-screen.
+func (m Model) View() tea.View {
+	v := tea.NewView(m.render())
+	v.AltScreen = true
+	return v
+}
+
+// render renders the current view as text.
+func (m Model) render() string {
 	switch m.currentView {
 	case msg.ViewMainMenu:
 		return m.mainMenu.View()
@@ -198,7 +206,7 @@ func (m Model) withLeaf(id msg.ViewID, v view.Viewer) Model {
 	return m
 }
 
-func (m Model) handleGlobalKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) handleGlobalKey(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.viewClaimsKey(k.String()) {
 		return m.updateCurrentView(k)
 	}
@@ -241,7 +249,7 @@ func (m Model) handleRefresh() (tea.Model, tea.Cmd) {
 
 func (m Model) handleOpen() (tea.Model, tea.Cmd) {
 	if m.currentView != msg.ViewAppDetail {
-		return m.updateCurrentView(tea.KeyMsg{})
+		return m.updateCurrentView(tea.KeyPressMsg{})
 	}
 	param := m.currentParam()
 	runner := m.runner

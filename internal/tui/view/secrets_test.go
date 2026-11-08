@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -48,12 +48,12 @@ func TestDSNTabMasksByDefault(t *testing.T) {
 }
 
 func TestDSNTabRevealToggle(t *testing.T) {
-	m, _ := dsnModel().Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("v")})
+	m, _ := dsnModel().Update(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	v := m.View()
 	if !strings.Contains(v, "postgres://app:topsecret@db:5432/app") || !strings.Contains(v, "v: hide") {
 		t.Errorf("v should reveal secrets, got:\n%s", v)
 	}
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("v")})
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	if strings.Contains(m.View(), "topsecret") {
 		t.Error("second v should hide secrets again")
 	}
@@ -69,7 +69,7 @@ func TestDSNTabSortedKeys(t *testing.T) {
 func TestRevealKeyIgnoredOutsideDSNTab(t *testing.T) {
 	m := dsnModel()
 	m.activeTab = serviceInfoTab
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("v")})
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	m.activeTab = serviceDSNTab
 	if strings.Contains(m.View(), "topsecret") {
 		t.Error("v outside the DSN tab should not reveal secrets")
@@ -112,7 +112,7 @@ var testConfig = map[string]string{
 	"PORT":         "8080",
 }
 
-func vKey() tea.KeyMsg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("v")} }
+func vKey() tea.KeyPressMsg { return tea.KeyPressMsg{Code: 'v', Text: "v"} }
 
 func assertMaskedConfig(t *testing.T, v string) {
 	t.Helper()

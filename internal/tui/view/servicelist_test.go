@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -35,7 +35,7 @@ func TestServiceListSelectEmitsNavigate(t *testing.T) {
 		{Name: "my-db", Type: "postgres", Plan: "s-1"},
 	}
 	m, _ = m.Update(msg.ListResultMsg[runway.Service]{Items: services})
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("expected command on enter")
 	}

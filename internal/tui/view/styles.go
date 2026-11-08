@@ -1,6 +1,6 @@
 package view
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
 // DetailStyles holds styles needed by detail views.
 type DetailStyles struct {
