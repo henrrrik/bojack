@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
@@ -57,17 +57,17 @@ func TestAppDetailTabSwitching(t *testing.T) {
 	if m.activeTab != 0 {
 		t.Fatalf("initial tab = %d, want 0", m.activeTab)
 	}
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	if m.activeTab != 1 {
 		t.Errorf("tab = %d, want 1", m.activeTab)
 	}
 	// Shift+tab goes back
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	if m.activeTab != 0 {
 		t.Errorf("tab = %d, want 0", m.activeTab)
 	}
 	// Wraps around backwards
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	if m.activeTab != len(appTabs)-1 {
 		t.Errorf("tab = %d, want %d", m.activeTab, len(appTabs)-1)
 	}
@@ -300,7 +300,7 @@ func TestStatsTabShowsInterval(t *testing.T) {
 
 func TestStatsIntervalKeyCyclesAndRequestsFetch(t *testing.T) {
 	m := statsModel(runway.Stats{"cpu": {Title: "CPU", Data: []runway.StatsPoint{{Value: 1}}}})
-	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("i")})
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 'i', Text: "i"})
 	if m.StatsInterval() != "168h" {
 		t.Errorf("interval = %q, want 168h", m.StatsInterval())
 	}
@@ -317,7 +317,7 @@ func TestStatsIntervalKeyCyclesAndRequestsFetch(t *testing.T) {
 
 func TestStatsIntervalKeyIgnoredOutsideStatsTab(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
-	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("i")})
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 'i', Text: "i"})
 	if m.StatsInterval() != DefaultStatsInterval || cmd != nil {
 		t.Errorf("interval key on Info tab should do nothing, got interval %q cmd %v", m.StatsInterval(), cmd)
 	}
@@ -343,7 +343,7 @@ func logsModel() AppDetailModel {
 }
 
 func pressKey(m AppDetailModel, k string) (AppDetailModel, tea.Cmd) {
-	return m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)})
+	return m.Update(tea.KeyPressMsg{Code: []rune(k)[0], Text: k})
 }
 
 func TestLogsTabShowsFilterState(t *testing.T) {
@@ -465,7 +465,7 @@ func TestAppStatsArrowSelectsMetric(t *testing.T) {
 	if !strings.Contains(m.View(), "↑/↓: metric") {
 		t.Errorf("help should offer ↑/↓, got:\n%s", m.View())
 	}
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	if v := ansi.Strip(m.View()); !strings.Contains(v, "128┤") {
 		t.Errorf("down should chart the second metric, got:\n%s", v)
 	}

@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
-func key(k string) tea.KeyMsg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)} }
+func key(k string) tea.KeyPressMsg { return tea.KeyPressMsg{Code: []rune(k)[0], Text: k} }
 
 func requestOf(t *testing.T, cmd tea.Cmd) msg.ActionRequestMsg {
 	t.Helper()
@@ -63,7 +63,7 @@ func TestActionAnyOtherKeyCancels(t *testing.T) {
 func TestActionTabKeyCancelsWithoutSwitching(t *testing.T) {
 	m := NewAppDetailModel("terry", testDetailStyles(), 120, 24)
 	m, _ = m.Update(key("R"))
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	if m.activeTab != 0 || strings.Contains(m.View(), "(y/N)") {
 		t.Errorf("tab while confirming should just cancel, tab = %d", m.activeTab)
 	}
@@ -141,7 +141,7 @@ func TestDomainListVerifySelected(t *testing.T) {
 	if !strings.Contains(v.View(), "V: verify") {
 		t.Errorf("help should offer V: verify, got:\n%s", v.View())
 	}
-	v, _ = v.Update(tea.KeyMsg{Type: tea.KeyDown})
+	v, _ = v.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	v, cmd := v.Update(key("V"))
 	if cmd != nil || !strings.Contains(v.View(), "Re-check verification of b.com? (y/N)") {
 		t.Fatalf("V should confirm for the selected domain, got:\n%s", v.View())

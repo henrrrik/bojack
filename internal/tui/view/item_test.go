@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -53,7 +53,7 @@ func TestItemDetailShowsError(t *testing.T) {
 func TestTemplateListEnterOpensDetail(t *testing.T) {
 	var v Viewer = NewTemplateListModel(testDetailStyles(), 100, 30)
 	v, _ = v.Update(msg.ListResultMsg[runway.Template]{Items: []runway.Template{{Name: "valkey"}}})
-	_, cmd := v.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := v.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("enter should send a navigate command")
 	}
@@ -65,7 +65,7 @@ func TestTemplateListEnterOpensDetail(t *testing.T) {
 func TestVolumeListEnterOpensDetail(t *testing.T) {
 	var v Viewer = NewVolumeListModel(testDetailStyles(), 100, 30)
 	v, _ = v.Update(msg.ListResultMsg[runway.Volume]{Items: []runway.Volume{{Name: "data-1"}}})
-	_, cmd := v.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := v.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("enter should send a navigate command")
 	}

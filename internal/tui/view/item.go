@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 )
 
@@ -74,7 +74,10 @@ func (m ItemModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
 	case msg.ActionResultMsg:
 		m.actions = m.actions.apply(teaMsg)
 		return m, nil
-	case tea.KeyMsg:
+	case tea.PasteMsg:
+		m.actions = m.actions.paste(teaMsg)
+		return m, nil
+	case tea.KeyPressMsg:
 		if p, cmd, ok := m.actions.handleKey(teaMsg, m.name, m.currentActions()...); ok {
 			m.actions = p
 			return m, cmd

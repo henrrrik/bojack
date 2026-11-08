@@ -4,22 +4,22 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/table"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/table"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
 func typeKeys(v Viewer, keys ...string) Viewer {
 	for _, k := range keys {
-		var m tea.KeyMsg
+		var m tea.KeyPressMsg
 		switch k {
 		case "enter":
-			m = tea.KeyMsg{Type: tea.KeyEnter}
+			m = tea.KeyPressMsg{Code: tea.KeyEnter}
 		case "esc":
-			m = tea.KeyMsg{Type: tea.KeyEsc}
+			m = tea.KeyPressMsg{Code: tea.KeyEsc}
 		case "backspace":
-			m = tea.KeyMsg{Type: tea.KeyBackspace}
+			m = tea.KeyPressMsg{Code: tea.KeyBackspace}
 		default:
 			m = key(k)
 		}
@@ -69,7 +69,7 @@ func TestFilterEscClears(t *testing.T) {
 
 func TestFilterSelectUsesVisibleRows(t *testing.T) {
 	v := typeKeys(pets(), "/", "b", "e", "enter")
-	_, cmd := v.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := v.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("enter should select")
 	}
@@ -83,7 +83,7 @@ func TestFilterNoMatches(t *testing.T) {
 	if !strings.Contains(out, `No pets match "zz".`) {
 		t.Errorf("got:\n%s", out)
 	}
-	if _, cmd := typeKeys(pets(), "/", "z", "enter").Update(tea.KeyMsg{Type: tea.KeyEnter}); cmd != nil {
+	if _, cmd := typeKeys(pets(), "/", "z", "enter").Update(tea.KeyPressMsg{Code: tea.KeyEnter}); cmd != nil {
 		t.Error("enter with no visible rows should do nothing")
 	}
 }

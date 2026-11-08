@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 )
 
@@ -29,19 +29,19 @@ func TestMainMenuNavigation(t *testing.T) {
 	}
 
 	// Move down
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	if m.cursor != 1 {
 		t.Errorf("cursor = %d, want 1", m.cursor)
 	}
 
 	// Move up
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	if m.cursor != 0 {
 		t.Errorf("cursor = %d, want 0", m.cursor)
 	}
 
 	// Can't go above 0
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	if m.cursor != 0 {
 		t.Errorf("cursor = %d, want 0", m.cursor)
 	}
@@ -50,7 +50,7 @@ func TestMainMenuNavigation(t *testing.T) {
 func TestMainMenuSelect(t *testing.T) {
 	m := NewMainMenuModel()
 	// First item is Apps -> ViewAppList
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("expected command on enter, got nil")
 	}

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -41,7 +41,7 @@ func TestServiceDetailInfoTab(t *testing.T) {
 
 func TestServiceDetailTabSwitching(t *testing.T) {
 	m := NewServiceDetailModel("my-db", testDetailStyles(), 80, 24)
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	if m.activeTab != 1 {
 		t.Errorf("tab = %d, want 1", m.activeTab)
 	}
@@ -97,7 +97,7 @@ func TestServiceDetailStatsTab(t *testing.T) {
 func TestServiceStatsIntervalKey(t *testing.T) {
 	m := NewServiceDetailModel("my-db", testDetailStyles(), 80, 24)
 	m.activeTab = 1
-	m, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("i")})
+	m, cmd := m.Update(tea.KeyPressMsg{Code: 'i', Text: "i"})
 	if m.StatsInterval() != "168h" || cmd == nil {
 		t.Fatalf("interval = %q, cmd = %v; want 168h and a fetch command", m.StatsInterval(), cmd)
 	}

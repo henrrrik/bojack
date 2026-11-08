@@ -3,10 +3,10 @@ package view
 import (
 	"context"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/table"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 )
 
@@ -74,7 +74,7 @@ func (m ListModel[T]) selectedTarget() string {
 
 // handleKey runs actions and selection. ok is false if the key is left for
 // the table (navigation).
-func (m ListModel[T]) handleKey(km tea.KeyMsg) (ListModel[T], tea.Cmd, bool) {
+func (m ListModel[T]) handleKey(km tea.KeyPressMsg) (ListModel[T], tea.Cmd, bool) {
 	if m.filtering {
 		next, ok := m.filterKeyInput(km)
 		return next, nil, ok
@@ -121,7 +121,12 @@ func (m ListModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
 	case msg.ActionResultMsg:
 		m.actions = m.actions.apply(teaMsg)
 		return m, nil
-	case tea.KeyMsg:
+	case tea.PasteMsg:
+		if m.filtering {
+			m = m.setFilter(m.filter + teaMsg.Content)
+		}
+		return m, nil
+	case tea.KeyPressMsg:
 		if next, cmd, ok := m.handleKey(teaMsg); ok {
 			return next, cmd
 		}
@@ -165,6 +170,7 @@ func (m ListModel[T]) buildTable() table.Model {
 		table.WithRows(rows),
 		table.WithFocused(true),
 		table.WithHeight(tableHeight(m.height, len(rows))),
+		table.WithWidth(tableWidth(m.columns)),
 	)
 	s := table.DefaultStyles()
 	s.Header = s.Header.BorderStyle(lipgloss.NormalBorder()).BorderBottom(true).Bold(true)
@@ -189,4 +195,15 @@ func tableHeight(termHeight, numRows int) int {
 		h = minH
 	}
 	return h
+}
+
+// tableWidth is the table's natural width: each column plus the one-cell
+// padding on either side. (The bubbles v2 table clips rows to its width,
+// which is 0 unless set.)
+func tableWidth(columns []table.Column) int {
+	w := 0
+	for _, c := range columns {
+		w += c.Width + 2
+	}
+	return w
 }

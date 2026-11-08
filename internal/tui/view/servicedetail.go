@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -80,9 +80,11 @@ func (m ServiceDetailModel) Update(teaMsg tea.Msg) (ServiceDetailModel, tea.Cmd)
 		m.height = teaMsg.Height
 	case msg.ActionResultMsg:
 		m.actions = m.actions.apply(teaMsg)
+	case tea.PasteMsg:
+		m.actions = m.actions.paste(teaMsg)
 	case msg.FollowTickMsg:
 		return m, m.onFollowTick(teaMsg)
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(teaMsg)
 	default:
 		m = m.applyResult(teaMsg)
@@ -132,7 +134,7 @@ func (m ServiceDetailModel) applyStats(stats runway.Stats, interval string, err 
 	return m
 }
 
-func (m ServiceDetailModel) handleKey(k tea.KeyMsg) (ServiceDetailModel, tea.Cmd) {
+func (m ServiceDetailModel) handleKey(k tea.KeyPressMsg) (ServiceDetailModel, tea.Cmd) {
 	if p, cmd, ok := m.actions.handleKey(k, m.name, m.tabActions()...); ok {
 		m.actions = p
 		return m, cmd

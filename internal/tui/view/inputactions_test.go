@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
-var enterKey = tea.KeyMsg{Type: tea.KeyEnter}
+var enterKey = tea.KeyPressMsg{Code: tea.KeyEnter}
 
 func appOnTab(tab int) AppDetailModel {
 	m := NewAppDetailModel("terry", testDetailStyles(), 120, 30)
@@ -73,15 +73,15 @@ func TestInputEditingAndCancel(t *testing.T) {
 		t.Error("while typing the view should claim every key")
 	}
 	m, _ = m.Update(key("FOOX"))
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	m, _ = m.Update(key("R=1"))
 	m, _ = m.Update(enterKey)
 	if !strings.Contains(m.View(), "Set FOOR on app terry?") {
 		t.Errorf("backspace should edit, and R should type, got:\n%s", m.View())
 	}
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m, _ = m.Update(key("S"))
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	if strings.Contains(m.View(), "KEY=value:") || m.ClaimsKey("q") {
 		t.Errorf("esc should cancel the input, got:\n%s", m.View())
 	}
@@ -171,7 +171,7 @@ func TestVolumeResize(t *testing.T) {
 		t.Fatalf("a smaller size should be rejected, got:\n%s", m.View())
 	}
 	for range 4 {
-		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	}
 	m, _ = m.Update(key("6144"))
 	m, _ = m.Update(enterKey)
