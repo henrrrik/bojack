@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,6 +21,11 @@ type fakeStatsRunner struct {
 func (f *fakeStatsRunner) AppStats(_ context.Context, name, interval string) (runway.Stats, error) {
 	f.calls = append(f.calls, "app "+name+" "+interval)
 	return runway.Stats{}, nil
+}
+
+func (f *fakeStatsRunner) AppLogs(_ context.Context, name string, opts runway.LogOptions) ([]runway.LogEntry, error) {
+	f.calls = append(f.calls, fmt.Sprintf("logs %s %+v", name, opts))
+	return nil, nil
 }
 
 func (f *fakeStatsRunner) ServiceStats(_ context.Context, name, interval string) (runway.Stats, error) {
@@ -184,5 +190,27 @@ func TestStatsIntervalPersistsAcrossNavigation(t *testing.T) {
 	result, _ = result.(Model).handleNavigate(msg.NavigateMsg{View: msg.ViewServiceDetail, Param: "my-db"})
 	if got := result.(Model).serviceDetail.StatsInterval(); got != "720h" {
 		t.Errorf("service detail interval = %q, want 720h", got)
+	}
+}
+
+func TestLogOptionsMsgFetchesLogs(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	m := NewModel(fake)
+	result, _ := m.handleNavigate(msg.NavigateMsg{View: msg.ViewAppDetail, Param: "my-app"})
+	opts := runway.LogOptions{Limit: 500, NoSystem: true}
+	result, cmd := result.(Model).Update(msg.LogOptionsMsg{Options: opts})
+	if cmd == nil {
+		t.Fatal("expected a fetch command")
+	}
+	if got, ok := cmd().(msg.AppLogsResultMsg); !ok || got.Options != opts {
+		t.Errorf("cmd() = %#v, want AppLogsResultMsg for %+v", got, opts)
+	}
+	if want := fmt.Sprintf("logs my-app %+v", opts); len(fake.calls) != 1 || fake.calls[0] != want {
+		t.Errorf("calls = %v, want [%s]", fake.calls, want)
+	}
+	// persists to the next app detail view
+	result, _ = result.(Model).handleNavigate(msg.NavigateMsg{View: msg.ViewAppDetail, Param: "other"})
+	if got := result.(Model).appDetail.LogOptions(); got != opts {
+		t.Errorf("next app detail options = %+v, want %+v", got, opts)
 	}
 }

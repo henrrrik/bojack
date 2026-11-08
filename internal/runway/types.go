@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strings"
+	"time"
 )
 
 // App represents a Runway application.
@@ -89,6 +90,19 @@ type Process struct {
 	Started      string            `json:"started"`
 	Integrations []json.RawMessage `json:"integrations"`
 }
+
+// LogOptions selects which logs "app logs" returns. The zero value means all
+// log types over the full retention period, with DefaultLogLimit lines.
+type LogOptions struct {
+	Since     time.Duration // only logs newer than now-Since; 0 = full retention
+	Limit     int           // most recent lines to return; 0 = DefaultLogLimit
+	NoBuild   bool
+	NoRuntime bool
+	NoSystem  bool
+}
+
+// DefaultLogLimit matches the CLI's default --limit.
+const DefaultLogLimit = 100
 
 // LogEntry represents a single log line.
 type LogEntry struct {

@@ -26,8 +26,8 @@ func FetchAppList(ctx context.Context, r runway.Runner) tea.Cmd {
 }
 
 // FetchAppDetail returns a batch command that fetches all app detail data,
-// with stats over interval.
-func FetchAppDetail(ctx context.Context, r runway.Runner, name, interval string) tea.Cmd {
+// with stats over interval and logs selected by logOpts.
+func FetchAppDetail(ctx context.Context, r runway.Runner, name, interval string, logOpts runway.LogOptions) tea.Cmd {
 	return tea.Batch(
 		func() tea.Msg {
 			d, err := r.AppShow(ctx, name)
@@ -50,10 +50,7 @@ func FetchAppDetail(ctx context.Context, r runway.Runner, name, interval string)
 			s, err := r.AppShares(ctx, name)
 			return msg.AppSharesResultMsg{Shares: s, Err: err}
 		},
-		func() tea.Msg {
-			l, err := r.AppLogs(ctx, name)
-			return msg.AppLogsResultMsg{Logs: l, Err: err}
-		},
+		FetchAppLogs(ctx, r, name, logOpts),
 	)
 }
 
@@ -94,6 +91,14 @@ func FetchAppStats(ctx context.Context, r runway.Runner, name, interval string) 
 	return func() tea.Msg {
 		s, err := r.AppStats(ctx, name, interval)
 		return msg.AppStatsResultMsg{Stats: s, Interval: interval, Err: err}
+	}
+}
+
+// FetchAppLogs returns a command that fetches app logs with opts.
+func FetchAppLogs(ctx context.Context, r runway.Runner, name string, opts runway.LogOptions) tea.Cmd {
+	return func() tea.Msg {
+		l, err := r.AppLogs(ctx, name, opts)
+		return msg.AppLogsResultMsg{Logs: l, Options: opts, Err: err}
 	}
 }
 

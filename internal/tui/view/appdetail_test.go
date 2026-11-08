@@ -3,6 +3,7 @@ package view
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -101,6 +102,7 @@ func TestAppDetailLogsTab(t *testing.T) {
 		Logs: []runway.LogEntry{
 			{Content: "shutting down server", Time: "2026-04-05T23:27:57Z", Type: "app"},
 		},
+		Options: DefaultLogOptions,
 	})
 	m.activeTab = 6
 	v := m.View()
@@ -324,5 +326,84 @@ func TestStaleStatsResultIgnored(t *testing.T) {
 	m, _ = m.Update(msg.AppStatsResultMsg{Stats: runway.Stats{"cpu": {Title: "CPU"}}, Interval: "24h"})
 	if !strings.Contains(m.View(), "Loading") {
 		t.Error("result for a different interval should be ignored")
+	}
+}
+
+func logsModel() AppDetailModel {
+	m := NewAppDetailModel("my-app", testDetailStyles(), 120, 24)
+	m, _ = m.Update(msg.AppLogsResultMsg{
+		Logs:    []runway.LogEntry{{Content: "hello", Time: "2026-11-07T00:00:00Z", Type: "app"}},
+		Options: DefaultLogOptions,
+	})
+	m.activeTab = appLogsTab
+	return m
+}
+
+func pressKey(m AppDetailModel, k string) (AppDetailModel, tea.Cmd) {
+	return m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)})
+}
+
+func TestLogsTabShowsFilterState(t *testing.T) {
+	v := logsModel().View()
+	for _, want := range []string{"[x] app", "[x] build", "[x] system", "Range: all", "Limit: 100", "t: range", "l: limit"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("logs tab should contain %q, got:\n%s", want, v)
+		}
+	}
+}
+
+func TestLogsKeysUpdateOptionsAndRequestFetch(t *testing.T) {
+	tests := []struct {
+		key  string
+		want runway.LogOptions
+	}{
+		{"a", runway.LogOptions{Limit: 100, NoRuntime: true}},
+		{"b", runway.LogOptions{Limit: 100, NoBuild: true}},
+		{"s", runway.LogOptions{Limit: 100, NoSystem: true}},
+		{"t", runway.LogOptions{Limit: 100, Since: time.Hour}},
+		{"l", runway.LogOptions{Limit: 500}},
+	}
+	for _, tt := range tests {
+		m, cmd := pressKey(logsModel(), tt.key)
+		if m.LogOptions() != tt.want {
+			t.Errorf("key %q: options = %+v, want %+v", tt.key, m.LogOptions(), tt.want)
+		}
+		if !strings.Contains(m.View(), "Loading") {
+			t.Errorf("key %q: logs should reload", tt.key)
+		}
+		if cmd == nil {
+			t.Fatalf("key %q: expected fetch request", tt.key)
+		}
+		if got, ok := cmd().(msg.LogOptionsMsg); !ok || got.Options != tt.want {
+			t.Errorf("key %q: cmd() = %#v", tt.key, got)
+		}
+	}
+}
+
+func TestLogsToggleTwiceRestores(t *testing.T) {
+	m, _ := pressKey(logsModel(), "s")
+	m, _ = pressKey(m, "s")
+	if m.LogOptions() != DefaultLogOptions {
+		t.Errorf("options = %+v, want default", m.LogOptions())
+	}
+}
+
+func TestLogsKeysIgnoredOutsideLogsTab(t *testing.T) {
+	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
+	for _, k := range []string{"a", "b", "s", "t", "l"} {
+		var cmd tea.Cmd
+		m, cmd = pressKey(m, k)
+		if cmd != nil || m.LogOptions() != DefaultLogOptions {
+			t.Errorf("key %q on Info tab should do nothing", k)
+		}
+	}
+}
+
+func TestStaleLogsResultIgnored(t *testing.T) {
+	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24).WithLogOptions(runway.LogOptions{Limit: 500})
+	m.activeTab = appLogsTab
+	m, _ = m.Update(msg.AppLogsResultMsg{Logs: []runway.LogEntry{{Content: "old"}}, Options: DefaultLogOptions})
+	if !strings.Contains(m.View(), "Loading") {
+		t.Error("result for different options should be ignored")
 	}
 }

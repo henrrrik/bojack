@@ -83,9 +83,17 @@ type AppSharesResultMsg struct {
 	Err    error
 }
 
+// AppLogsResultMsg carries logs fetched with the given options.
 type AppLogsResultMsg struct {
-	Logs []runway.LogEntry
-	Err  error
+	Logs    []runway.LogEntry
+	Options runway.LogOptions
+	Err     error
+}
+
+// LogOptionsMsg asks the root model to refetch logs for the current app
+// detail view with new options.
+type LogOptionsMsg struct {
+	Options runway.LogOptions
 }
 
 type ServiceListResultMsg struct {
