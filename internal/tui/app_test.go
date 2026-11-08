@@ -241,7 +241,10 @@ func TestNavigateToListViewFetchesAndRenders(t *testing.T) {
 }
 
 func TestAllListViewsRegistered(t *testing.T) {
-	for _, v := range []msg.ViewID{msg.ViewTemplateList, msg.ViewRegistryList, msg.ViewSSHKeyList, msg.ViewAPIKeyList} {
+	for _, v := range []msg.ViewID{
+		msg.ViewVolumeList, msg.ViewDomainList, msg.ViewPolicyList, msg.ViewRegionList, msg.ViewPlanList,
+		msg.ViewTemplateList, msg.ViewRegistryList, msg.ViewSSHKeyList, msg.ViewAPIKeyList,
+	} {
 		if _, ok := listViews[v]; !ok {
 			t.Errorf("view %d not registered", v)
 		}

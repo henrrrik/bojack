@@ -110,41 +110,6 @@ func FetchServiceStats(ctx context.Context, r runway.Runner, name, interval stri
 	}
 }
 
-func FetchVolumeList(ctx context.Context, r runway.Runner) tea.Cmd {
-	return func() tea.Msg {
-		v, err := r.VolumeList(ctx)
-		return msg.VolumeListResultMsg{Volumes: v, Err: err}
-	}
-}
-
-func FetchDomainList(ctx context.Context, r runway.Runner) tea.Cmd {
-	return func() tea.Msg {
-		d, err := r.DomainList(ctx)
-		return msg.DomainListResultMsg{Domains: d, Err: err}
-	}
-}
-
-func FetchPolicyList(ctx context.Context, r runway.Runner) tea.Cmd {
-	return func() tea.Msg {
-		p, err := r.PolicyList(ctx)
-		return msg.PolicyListResultMsg{Policies: p, Err: err}
-	}
-}
-
-func FetchRegionList(ctx context.Context, r runway.Runner) tea.Cmd {
-	return func() tea.Msg {
-		r2, err := r.RegionList(ctx)
-		return msg.RegionListResultMsg{Regions: r2, Err: err}
-	}
-}
-
-func FetchPlanList(ctx context.Context, r runway.Runner) tea.Cmd {
-	return func() tea.Msg {
-		p, err := r.PlanList(ctx)
-		return msg.PlanListResultMsg{Plans: p, Err: err}
-	}
-}
-
 func renderHelp(style lipgloss.Style, items ...string) string {
 	result := ""
 	for i, item := range items {

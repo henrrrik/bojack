@@ -1,8 +1,11 @@
 package tui
 
 import (
+	"context"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 	"github.com/henrrrik/runway-tui/internal/tui/view"
@@ -29,33 +32,33 @@ type Model struct {
 	appDetail     view.AppDetailModel
 	serviceList   view.ServiceListModel
 	serviceDetail view.ServiceDetailModel
-	volumeList    view.VolumeListModel
-	domainList    view.DomainListModel
-	policyList    view.PolicyListModel
-	regionList    view.RegionListModel
-	planList      view.PlanListModel
 	// list is the current generic list view (see listViews).
 	list view.Viewer
 }
 
 // listViews builds the generic list views and the command that fills them.
 var listViews = map[msg.ViewID]func(m Model) (view.Viewer, tea.Cmd){
-	msg.ViewTemplateList: func(m Model) (view.Viewer, tea.Cmd) {
-		return view.NewTemplateListModel(m.styles.HelpBar, m.width, m.height),
-			view.FetchList(view.CmdContext(), m.runner.TemplateList)
-	},
-	msg.ViewRegistryList: func(m Model) (view.Viewer, tea.Cmd) {
-		return view.NewRegistryListModel(m.styles.HelpBar, m.width, m.height),
-			view.FetchList(view.CmdContext(), m.runner.RegistryList)
-	},
-	msg.ViewSSHKeyList: func(m Model) (view.Viewer, tea.Cmd) {
-		return view.NewSSHKeyListModel(m.styles.HelpBar, m.width, m.height),
-			view.FetchList(view.CmdContext(), m.runner.SSHKeyList)
-	},
-	msg.ViewAPIKeyList: func(m Model) (view.Viewer, tea.Cmd) {
-		return view.NewAPIKeyListModel(m.styles.HelpBar, m.width, m.height),
-			view.FetchList(view.CmdContext(), m.runner.APIKeyList)
-	},
+	msg.ViewVolumeList:   listView(view.NewVolumeListModel, runway.Runner.VolumeList),
+	msg.ViewDomainList:   listView(view.NewDomainListModel, runway.Runner.DomainList),
+	msg.ViewPolicyList:   listView(view.NewPolicyListModel, runway.Runner.PolicyList),
+	msg.ViewRegionList:   listView(view.NewRegionListModel, runway.Runner.RegionList),
+	msg.ViewPlanList:     listView(view.NewPlanListModel, runway.Runner.PlanList),
+	msg.ViewTemplateList: listView(view.NewTemplateListModel, runway.Runner.TemplateList),
+	msg.ViewRegistryList: listView(view.NewRegistryListModel, runway.Runner.RegistryList),
+	msg.ViewSSHKeyList:   listView(view.NewSSHKeyListModel, runway.Runner.SSHKeyList),
+	msg.ViewAPIKeyList:   listView(view.NewAPIKeyListModel, runway.Runner.APIKeyList),
+}
+
+// listView pairs a list view constructor with the Runner method that fills it.
+func listView[T any](
+	newModel func(lipgloss.Style, int, int) view.ListModel[T],
+	fetch func(runway.Runner, context.Context) ([]T, error),
+) func(Model) (view.Viewer, tea.Cmd) {
+	return func(m Model) (view.Viewer, tea.Cmd) {
+		r := m.runner
+		return newModel(m.styles.HelpBar, m.width, m.height),
+			view.FetchList(view.CmdContext(), func(ctx context.Context) ([]T, error) { return fetch(r, ctx) })
+	}
 }
 
 // NewModel creates the root model.
@@ -114,25 +117,12 @@ func (m Model) View() string {
 	}
 }
 
-// viewLeaf renders the simple list views.
+// viewLeaf renders the current generic list view.
 func (m Model) viewLeaf() string {
 	if _, ok := listViews[m.currentView]; ok && m.list != nil {
 		return m.list.View()
 	}
-	switch m.currentView {
-	case msg.ViewVolumeList:
-		return m.volumeList.View()
-	case msg.ViewDomainList:
-		return m.domainList.View()
-	case msg.ViewPolicyList:
-		return m.policyList.View()
-	case msg.ViewRegionList:
-		return m.regionList.View()
-	case msg.ViewPlanList:
-		return m.planList.View()
-	default:
-		return m.mainMenu.View()
-	}
+	return m.mainMenu.View()
 }
 
 func (m Model) handleGlobalKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -247,29 +237,6 @@ func (m Model) initView(v msg.ViewID, param string) (Model, tea.Cmd) {
 			WithStatsInterval(m.statsInterval)
 		return m, view.FetchServiceDetail(ctx, m.runner, param, m.statsInterval)
 	}
-	return m.initLeafView(v)
-}
-
-// initLeafView creates a simple list view and returns the command that fills it.
-func (m Model) initLeafView(v msg.ViewID) (Model, tea.Cmd) {
-	ctx := view.CmdContext()
-	switch v {
-	case msg.ViewVolumeList:
-		m.volumeList = view.NewVolumeListModel(m.styles.HelpBar, m.width, m.height)
-		return m, view.FetchVolumeList(ctx, m.runner)
-	case msg.ViewDomainList:
-		m.domainList = view.NewDomainListModel(m.styles.HelpBar, m.width, m.height)
-		return m, view.FetchDomainList(ctx, m.runner)
-	case msg.ViewPolicyList:
-		m.policyList = view.NewPolicyListModel(m.styles.HelpBar, m.width, m.height)
-		return m, view.FetchPolicyList(ctx, m.runner)
-	case msg.ViewRegionList:
-		m.regionList = view.NewRegionListModel(m.styles.HelpBar, m.width, m.height)
-		return m, view.FetchRegionList(ctx, m.runner)
-	case msg.ViewPlanList:
-		m.planList = view.NewPlanListModel(m.styles.HelpBar, m.width, m.height)
-		return m, view.FetchPlanList(ctx, m.runner)
-	}
 	return m, nil
 }
 
@@ -296,19 +263,6 @@ func (m Model) updateLeafView(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if _, ok := listViews[m.currentView]; ok && m.list != nil {
 		m.list, cmd = m.list.Update(teaMsg)
-		return m, cmd
-	}
-	switch m.currentView {
-	case msg.ViewVolumeList:
-		m.volumeList, cmd = m.volumeList.Update(teaMsg)
-	case msg.ViewDomainList:
-		m.domainList, cmd = m.domainList.Update(teaMsg)
-	case msg.ViewPolicyList:
-		m.policyList, cmd = m.policyList.Update(teaMsg)
-	case msg.ViewRegionList:
-		m.regionList, cmd = m.regionList.Update(teaMsg)
-	case msg.ViewPlanList:
-		m.planList, cmd = m.planList.Update(teaMsg)
 	}
 	return m, cmd
 }
