@@ -7,6 +7,8 @@ command and renders the result, so it sees exactly what the CLI sees. Actions
 that change something (restarts, backups, config changes, plan changes, volume
 resizes, domain re-checks) always ask you to confirm first.
 
+![bojack showing an app's Stats tab: a usage gauge per metric, and CPU pinned above Memory for comparison](docs/screenshot.svg)
+
 ## Features
 
 - **Apps:** list with type, plan, region, role and status. The detail view has tabs for
