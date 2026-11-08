@@ -16,7 +16,8 @@ First release. Checked against runway CLI 1.49.0.
   Processes, Stats, Config, Domains, Sharing and Logs.
 - Services: details, stats (including database metrics), config, backups and DSN.
 - Stats for apps and services: an overview line per metric (latest value
-  against the plan limit, plus a sparkline) and a line chart of the selected
+  against the plan limit, plus a usage gauge with the interval's peak marked)
+  and a line chart of the selected
   metric with time and value axes and the warning/critical thresholds. Intervals
   from 1h to 30d. Pin a metric (`p`) to chart it above another, over the same
   time range, to compare them.
