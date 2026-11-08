@@ -13,5 +13,6 @@ type DetailStyles struct {
 	Value       lipgloss.Style
 	StatusUp    lipgloss.Style
 	StatusDown  lipgloss.Style
+	StatusWarn  lipgloss.Style
 	Sparkline   lipgloss.Style
 }

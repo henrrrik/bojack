@@ -86,8 +86,8 @@ func TestAppStats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AppStats: %v", err)
 	}
-	if stats.Latest.CPU.Load != 0.25 {
-		t.Errorf("CPU.Load = %f", stats.Latest.CPU.Load)
+	if v, ok := stats["cpu"].Latest(); !ok || v != 0.25 {
+		t.Errorf("cpu latest = %v, %v; want 0.25, true", v, ok)
 	}
 }
 

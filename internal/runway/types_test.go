@@ -2,6 +2,8 @@ package runway
 
 import (
 	"encoding/json"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -86,22 +88,44 @@ const processListJSON = `[
 ]`
 
 const appStatsJSON = `{
-  "all": [
-    {
-      "ts": 1743854400,
-      "val": {
-        "ram": {"used_bytes": 134217728},
-        "cpu": {"load": 0.25},
-        "hdd": {"used_bytes": 536870912},
-        "net": {"received_bytes": 1048576, "transmitted_bytes": 2097152}
-      }
-    }
-  ],
-  "latest": {
-    "ram": {"used_bytes": 134217728},
-    "cpu": {"load": 0.25},
-    "hdd": {"used_bytes": 536870912},
-    "net": {"received_bytes": 1048576, "transmitted_bytes": 2097152}
+  "cpu": {
+    "title": "CPU",
+    "unit": "cores",
+    "max": 0.5,
+    "warnAbove": 0.325,
+    "criticalAbove": 0.4,
+    "interval": {"tickMilliseconds": 3600000, "startTimestamp": 1794009439173, "endTimestamp": 1794095839173},
+    "data": [
+      {"ts": 1794009439174, "v": 0.1},
+      {"ts": 1794013039174, "v": 0.25}
+    ]
+  },
+  "ram": {
+    "title": "Memory",
+    "unit": "MiB",
+    "max": 128,
+    "warnAbove": 83.2,
+    "criticalAbove": 102.4,
+    "interval": {"tickMilliseconds": 3600000, "startTimestamp": 1794009439173, "endTimestamp": 1794095839173},
+    "data": [{"ts": 1794009439174, "v": 12.83203125}]
+  },
+  "hdd_ephemeral_app": {
+    "title": "HDD (ephemeral, app)",
+    "unit": "MiB",
+    "max": 2048,
+    "warnAbove": 1331.2,
+    "criticalAbove": 1638.4,
+    "interval": {"tickMilliseconds": 3600000, "startTimestamp": 1794009439173, "endTimestamp": 1794095839173},
+    "data": []
+  },
+  "net_in": {
+    "title": "Network (in)",
+    "unit": "MBit/s",
+    "max": 5,
+    "warnAbove": 3.25,
+    "criticalAbove": 4,
+    "interval": {"tickMilliseconds": 3600000, "startTimestamp": 1794009439173, "endTimestamp": 1794095839173},
+    "data": [{"ts": 1794009439174, "v": 0.0045}]
   }
 }`
 
@@ -363,20 +387,57 @@ func TestUnmarshalAppStats(t *testing.T) {
 	if err := json.Unmarshal([]byte(appStatsJSON), &stats); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(stats.All) != 1 {
-		t.Fatalf("got %d entries, want 1", len(stats.All))
+	cpu, ok := stats["cpu"]
+	if !ok {
+		t.Fatal("missing cpu metric")
 	}
-	if stats.All[0].Timestamp != 1743854400 {
-		t.Errorf("Timestamp = %d", stats.All[0].Timestamp)
+	meta := cpu
+	meta.Data = nil
+	want := StatsMetric{Title: "CPU", Unit: "cores", Max: 0.5, WarnAbove: 0.325, CriticalAbove: 0.4}
+	if !reflect.DeepEqual(meta, want) {
+		t.Errorf("metric = %+v, want %+v", meta, want)
 	}
-	if stats.Latest.CPU.Load != 0.25 {
-		t.Errorf("CPU.Load = %f", stats.Latest.CPU.Load)
+	if len(cpu.Data) != 2 {
+		t.Fatalf("got %d points, want 2", len(cpu.Data))
 	}
-	if stats.Latest.RAM.UsedBytes != 134217728 {
-		t.Errorf("RAM.UsedBytes = %f", stats.Latest.RAM.UsedBytes)
+	if cpu.Data[0].Timestamp != 1794009439174 || cpu.Data[0].Value != 0.1 {
+		t.Errorf("Data[0] = %+v", cpu.Data[0])
 	}
-	if stats.Latest.Net.ReceivedBytes != 1048576 {
-		t.Errorf("Net.ReceivedBytes = %f", stats.Latest.Net.ReceivedBytes)
+}
+
+func TestStatsMetricLatest(t *testing.T) {
+	m := StatsMetric{Data: []StatsPoint{{Value: 1}, {Value: 2}}}
+	if v, ok := m.Latest(); !ok || v != 2 {
+		t.Errorf("Latest = %v, %v; want 2, true", v, ok)
+	}
+	if _, ok := (StatsMetric{}).Latest(); ok {
+		t.Error("Latest on empty metric should return ok=false")
+	}
+}
+
+func TestStatsMetricValues(t *testing.T) {
+	m := StatsMetric{Data: []StatsPoint{{Value: 1}, {Value: 2}, {Value: 3}}}
+	got := m.Values()
+	want := []float64{1, 2, 3}
+	if len(got) != len(want) {
+		t.Fatalf("Values = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("Values = %v, want %v", got, want)
+		}
+	}
+}
+
+func TestAppStatsOrderedKeys(t *testing.T) {
+	stats := AppStats{
+		"net_out": {}, "zzz_custom": {}, "ram": {}, "hdd_ephemeral_worker": {},
+		"net_in": {}, "cpu": {}, "hdd_ephemeral_app": {},
+	}
+	got := stats.OrderedKeys()
+	want := []string{"cpu", "ram", "hdd_ephemeral_app", "hdd_ephemeral_worker", "net_in", "net_out", "zzz_custom"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("OrderedKeys = %v, want %v", got, want)
 	}
 }
 
