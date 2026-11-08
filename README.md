@@ -1,6 +1,6 @@
-# bojack
+# Bojack - Runway Manager
 
-A terminal UI for browsing your [Runway](https://runway.horse) apps and services.
+`bojack` is a terminal UI for managing your [Runway](https://runway.horse) apps and services.
 
 It is a front end to the `runway` CLI: every view runs a `runway … -o json`
 command and renders the result, so it sees exactly what the CLI sees. Actions
@@ -11,13 +11,15 @@ resizes, domain re-checks) always ask you to confirm first.
 
 - **Apps:** list with type, plan, region, role and status. The detail view has tabs for
   Info, Processes, Stats, Config, Domains, Sharing and Logs.
-- **Stats** (apps and services): one line per metric with its latest value against the plan limit and a
-  usage gauge (`━━━━──│───  41%`: filled to the latest value, coloured by the warning and critical
-  thresholds, with `│` marking the peak over the interval), and a braille line chart of the selected metric (`↑`/`↓`) with time and value axes, scaled from 0 to
-  the plan limit, with the warning and critical thresholds drawn in. Pin a metric (`p`) to
-  chart it above the selected one, over the same time range, to compare them. Charts use
+- **Stats** (apps and services): one line per metric with its latest value against the plan
+  limit and a usage gauge (`━━━━──│───  41%`: filled to the latest value, coloured by the
+  warning and critical thresholds, with `│` marking the peak over the interval). Below that,
+  a braille line chart of the selected metric (`↑`/`↓`) with time and value axes, scaled
+  from 0 to the plan limit, with the thresholds drawn in. Pin a metric (`p`) to chart it
+  above the selected one, over the same time range, to compare them. Charts use
   [ntcharts](https://github.com/NimbleMarkets/ntcharts).
 - **Services:** details, stats (including database metrics), config, backups and DSN.
+  Backups need a paid service plan; dev plans have none.
 - **Volumes, Domains, Policies, Regions, Plans, Templates, Registries, SSH Keys, API Keys:**
   simple tables. SSH keys show their `SHA256:` fingerprint, as `ssh-keygen -l` prints it.
   Press `enter` on a template or volume for its details (all versions and the full
@@ -56,7 +58,7 @@ go run ./cmd/bojack
 | `tab` / `shift+tab` | Next / previous tab (or click a tab) |
 | `↑`/`↓`, `j`/`k`    | Stats tab: select the metric to chart |
 | `p`                 | Stats tab: pin the selected metric, to chart it above the selected one for comparison; again to unpin |
-| `i`                 | Cycle stats interval (1h / 6h / 24h / 7d / 30d) |
+| `i`                 | Stats tab: cycle the interval (1h / 6h / 24h / 7d / 30d) |
 | `f`                 | Stats / Logs tabs: follow (auto-refresh every 15s); again to stop |
 | `v`                 | Config / DSN tabs: reveal / hide secrets (hidden by default) |
 | `a` / `b` / `s`     | Logs: toggle app / build / system logs |
@@ -66,7 +68,7 @@ go run ./cmd/bojack
 | `r`                 | Refresh                      |
 | `o`                 | Open app in browser          |
 | `R`                 | Restart app / service (asks to confirm with `y`) |
-| `B`                 | Service: create a backup (asks to confirm) |
+| `B`                 | Service: create a backup (asks to confirm; not on dev plans) |
 | `V`                 | Domains list: re-check verification of the selected domain (asks to confirm) |
 | `S` / `D`           | App / service Config tab: set `KEY=value` / remove a key (asks to confirm; secret values are masked as you type) |
 | `P`                 | App Info tab: move the app to another plan (asks to confirm) |
@@ -74,7 +76,7 @@ go run ./cmd/bojack
 | `esc`               | Back                         |
 | `q`, `ctrl+c`       | Quit                         |
 
-The TUI turns on mouse reporting so tabs can be clicked. Most terminals still let you
+bojack turns on mouse reporting so tabs can be clicked. Most terminals still let you
 select text by holding `shift` (`option` in iTerm2 and Terminal.app) while dragging.
 
 ## Development
@@ -97,7 +99,7 @@ After updating the CLI (`runway selfupdate`), run:
 go test -tags compat -run TestCLICompat -v ./internal/runway/
 ```
 
-It calls every read-only command the TUI uses against your logged-in account
+It calls every read-only command bojack uses against your logged-in account
 (first running app and first service) and fails on command or decode errors, or
 on fields our types expect that the CLI no longer sends. New CLI fields are
 logged. It prints field paths only, never values. CI skips it because it needs
