@@ -2,7 +2,7 @@
 
 A terminal UI for browsing your [Runway](https://runway.horse) apps and services.
 
-It is a mostly read-only front end to the `runway` CLI (the one action is restarting an app or service): every view runs a `runway … -o json`
+It is a mostly read-only front end to the `runway` CLI (the only actions are restarting apps and services, creating service backups and re-checking domain verification, each behind a confirmation): every view runs a `runway … -o json`
 command and renders the result, so it sees exactly what the CLI sees.
 
 ## Features
@@ -48,6 +48,8 @@ go run ./cmd/runway-tui
 | `r`                 | Refresh                      |
 | `o`                 | Open app in browser          |
 | `R`                 | Restart app / service (asks to confirm with `y`) |
+| `B`                 | Service: create a backup (asks to confirm) |
+| `V`                 | Domains list: re-check verification of the selected domain (asks to confirm) |
 | `esc`               | Back                         |
 | `q`, `ctrl+c`       | Quit                         |
 

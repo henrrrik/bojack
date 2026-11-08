@@ -5,13 +5,12 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
 func TestServiceListLoading(t *testing.T) {
-	var m Viewer = NewServiceListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewServiceListModel(testDetailStyles(), 80, 24)
 	v := m.View()
 	if !strings.Contains(v, "Fetching services") {
 		t.Error("loading view should say 'Fetching services'")
@@ -19,7 +18,7 @@ func TestServiceListLoading(t *testing.T) {
 }
 
 func TestServiceListReceivesData(t *testing.T) {
-	var m Viewer = NewServiceListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewServiceListModel(testDetailStyles(), 80, 24)
 	services := []runway.Service{
 		{Name: "my-db", Type: "postgres", Plan: "standard-1", HasBackup: true},
 	}
@@ -31,7 +30,7 @@ func TestServiceListReceivesData(t *testing.T) {
 }
 
 func TestServiceListSelectEmitsNavigate(t *testing.T) {
-	var m Viewer = NewServiceListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewServiceListModel(testDetailStyles(), 80, 24)
 	services := []runway.Service{
 		{Name: "my-db", Type: "postgres", Plan: "s-1"},
 	}
@@ -54,7 +53,7 @@ func TestServiceListSelectEmitsNavigate(t *testing.T) {
 }
 
 func TestServiceListEmpty(t *testing.T) {
-	var m Viewer = NewServiceListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewServiceListModel(testDetailStyles(), 80, 24)
 	m, _ = m.Update(msg.ListResultMsg[runway.Service]{Items: []runway.Service{}})
 	v := m.View()
 	if !strings.Contains(v, "No services found") {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -16,7 +15,7 @@ type thing struct{ name string }
 
 func newThingList() Viewer {
 	return NewListModel("things", []table.Column{{Title: "Name", Width: 10}},
-		func(t thing) table.Row { return table.Row{t.name} }, lipgloss.NewStyle(), 80, 24)
+		func(t thing) table.Row { return table.Row{t.name} }, testDetailStyles(), 80, 24)
 }
 
 func update(v Viewer, m any) Viewer {
@@ -106,7 +105,7 @@ func TestAPIKeyRow(t *testing.T) {
 
 func selectableThings() Viewer {
 	m := NewListModel("things", []table.Column{{Title: "Name", Width: 10}},
-		func(t thing) table.Row { return table.Row{t.name} }, lipgloss.NewStyle(), 80, 24).
+		func(t thing) table.Row { return table.Row{t.name} }, testDetailStyles(), 80, 24).
 		WithSelect(func(t thing) tea.Msg { return msg.NavigateMsg{View: msg.ViewAppDetail, Param: t.name} })
 	return update(m, msg.ListResultMsg[thing]{Items: []thing{{"alpha"}, {"beta"}}})
 }

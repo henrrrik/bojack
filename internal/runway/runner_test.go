@@ -407,6 +407,20 @@ func TestServiceRestart(t *testing.T) {
 	}
 }
 
+func TestServiceBackupCreate(t *testing.T) {
+	fake := newFake(map[string][]byte{"service backup create my-db -y": nil})
+	if err := NewCLIRunner(fake).ServiceBackupCreate(context.Background(), "my-db"); err != nil {
+		t.Fatalf("ServiceBackupCreate: %v", err)
+	}
+}
+
+func TestDomainVerify(t *testing.T) {
+	fake := newFake(map[string][]byte{"domain verify example.com -y": nil})
+	if err := NewCLIRunner(fake).DomainVerify(context.Background(), "example.com"); err != nil {
+		t.Fatalf("DomainVerify: %v", err)
+	}
+}
+
 func TestExecErrorIncludesStderr(t *testing.T) {
 	e := NewExecCommandExecutor("sh")
 	_, err := e.Execute(context.Background(), "-c", "echo 'app not found' >&2; exit 1")

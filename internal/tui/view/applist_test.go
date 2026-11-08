@@ -5,13 +5,12 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
 func TestAppListLoading(t *testing.T) {
-	var m Viewer = NewAppListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewAppListModel(testDetailStyles(), 80, 24)
 	v := m.View()
 	if !strings.Contains(v, "Fetching apps") {
 		t.Errorf("loading view should say 'Fetching apps', got %q", v)
@@ -19,7 +18,7 @@ func TestAppListLoading(t *testing.T) {
 }
 
 func TestAppListReceivesData(t *testing.T) {
-	var m Viewer = NewAppListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewAppListModel(testDetailStyles(), 80, 24)
 	apps := []runway.AppListEntry{
 		{
 			App: runway.App{
@@ -39,7 +38,7 @@ func TestAppListReceivesData(t *testing.T) {
 }
 
 func TestAppListError(t *testing.T) {
-	var m Viewer = NewAppListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewAppListModel(testDetailStyles(), 80, 24)
 	m, _ = m.Update(msg.ListResultMsg[runway.AppListEntry]{Err: errTest})
 	v := m.View()
 	if !strings.Contains(v, "Error") {
@@ -48,7 +47,7 @@ func TestAppListError(t *testing.T) {
 }
 
 func TestAppListEmpty(t *testing.T) {
-	var m Viewer = NewAppListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewAppListModel(testDetailStyles(), 80, 24)
 	m, _ = m.Update(msg.ListResultMsg[runway.AppListEntry]{Items: []runway.AppListEntry{}})
 	v := m.View()
 	if !strings.Contains(v, "No apps found") {
@@ -57,7 +56,7 @@ func TestAppListEmpty(t *testing.T) {
 }
 
 func TestAppListSelectEmitsNavigate(t *testing.T) {
-	var m Viewer = NewAppListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewAppListModel(testDetailStyles(), 80, 24)
 	apps := []runway.AppListEntry{
 		{App: runway.App{ID: "my-app", Type: "app", Plan: "s-1", Region: "eu", Meta: runway.AppMeta{Role: "owner"}}},
 	}
@@ -81,7 +80,7 @@ func TestAppListSelectEmitsNavigate(t *testing.T) {
 }
 
 func TestAppListSelectDbNavigatesToServiceDetail(t *testing.T) {
-	var m Viewer = NewAppListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewAppListModel(testDetailStyles(), 80, 24)
 	apps := []runway.AppListEntry{
 		{App: runway.App{ID: "my-db", Type: "db", Plan: "s-1", Region: "eu", Meta: runway.AppMeta{Role: "owner"}}},
 	}
@@ -111,7 +110,7 @@ type testError struct{}
 func (e *testError) Error() string { return "test error" }
 
 func TestAppListShowsStatus(t *testing.T) {
-	var m Viewer = NewAppListModel(lipgloss.NewStyle(), 120, 24)
+	var m Viewer = NewAppListModel(testDetailStyles(), 120, 24)
 	apps := []runway.AppListEntry{
 		{App: runway.App{ID: "up-app", Type: "app"}, Status: runway.AppStatus{Status: "running"}},
 		{App: runway.App{ID: "db-app", Type: "db"}},

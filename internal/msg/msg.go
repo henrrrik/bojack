@@ -121,15 +121,26 @@ type ListResultMsg[T any] struct {
 	Err   error
 }
 
-// RestartRequestMsg asks the root model to restart an app or service.
-type RestartRequestMsg struct {
-	Name    string
-	Service bool
+// ActionKind identifies an action that changes something in Runway.
+type ActionKind int
+
+const (
+	ActionRestartApp ActionKind = iota
+	ActionRestartService
+	ActionCreateBackup
+	ActionVerifyDomain
+)
+
+// ActionRequestMsg asks the root model to run an action on a target (an app,
+// service or domain name).
+type ActionRequestMsg struct {
+	Kind   ActionKind
+	Target string
 }
 
-// RestartResultMsg reports the outcome of a restart.
-type RestartResultMsg struct {
-	Name    string
-	Service bool
-	Err     error
+// ActionResultMsg reports the outcome of an action.
+type ActionResultMsg struct {
+	Kind   ActionKind
+	Target string
+	Err    error
 }

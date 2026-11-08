@@ -26,22 +26,25 @@ type ListModel[T any] struct {
 
 	table   table.Model
 	spinner spinner.Model
-	helpBar lipgloss.Style
-	items   []T
-	loading bool
-	err     error
-	width   int
-	height  int
+	styles  DetailStyles
+	// actions run on the selected item; actionTarget names it.
+	actions      actionPrompt
+	actionTarget func(T) string
+	items        []T
+	loading      bool
+	err          error
+	width        int
+	height       int
 }
 
 // NewListModel creates a list view of T with the given columns and row builder.
 func NewListModel[T any](noun string, columns []table.Column, row func(T) table.Row,
-	helpBar lipgloss.Style, width, height int) ListModel[T] {
+	styles DetailStyles, width, height int) ListModel[T] {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return ListModel[T]{
 		noun: noun, columns: columns, row: row,
-		spinner: s, helpBar: helpBar, loading: true, width: width, height: height,
+		spinner: s, styles: styles, loading: true, width: width, height: height,
 	}
 }
 
@@ -49,6 +52,34 @@ func NewListModel[T any](noun string, columns []table.Column, row func(T) table.
 func (m ListModel[T]) WithSelect(onSelect func(T) tea.Msg) ListModel[T] {
 	m.onSelect = onSelect
 	return m
+}
+
+// WithActions offers actions on the selected item, which target names.
+func (m ListModel[T]) WithActions(target func(T) string, specs ...actionSpec) ListModel[T] {
+	m.actions, m.actionTarget = newActionPrompt(specs...), target
+	return m
+}
+
+func (m ListModel[T]) selectedTarget() string {
+	if item, ok := m.selected(); ok && m.actionTarget != nil {
+		return m.actionTarget(item)
+	}
+	return ""
+}
+
+// handleKey runs actions and selection. ok is false if the key is left for
+// the table (navigation).
+func (m ListModel[T]) handleKey(k string) (ListModel[T], tea.Cmd, bool) {
+	if p, cmd, ok := m.actions.handleKey(k, m.selectedTarget()); ok {
+		m.actions = p
+		return m, cmd, true
+	}
+	if k == "enter" && m.onSelect != nil {
+		if item, ok := m.selected(); ok {
+			return m, func() tea.Msg { return m.onSelect(item) }, true
+		}
+	}
+	return m, nil, false
 }
 
 // selected returns the item under the table cursor.
@@ -71,11 +102,12 @@ func (m ListModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
 			m.table = m.buildTable()
 		}
 		return m, nil
+	case msg.ActionResultMsg:
+		m.actions = m.actions.apply(teaMsg)
+		return m, nil
 	case tea.KeyMsg:
-		if teaMsg.String() == "enter" && m.onSelect != nil {
-			if item, ok := m.selected(); ok {
-				return m, func() tea.Msg { return m.onSelect(item) }
-			}
+		if next, cmd, ok := m.handleKey(teaMsg.String()); ok {
+			return next, cmd
 		}
 	}
 	var cmd tea.Cmd
@@ -93,15 +125,15 @@ func (m ListModel[T]) View() string {
 		return m.spinner.View() + " Fetching " + m.noun + "..."
 	case m.err != nil:
 		return lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render("Error: "+m.err.Error()) +
-			"\n\n" + renderHelp(m.helpBar, "r: refresh", "esc: back")
+			"\n\n" + renderHelp(m.styles.HelpBar, "r: refresh", "esc: back")
 	case len(m.items) == 0:
-		return "No " + m.noun + " found.\n\n" + renderHelp(m.helpBar, "r: refresh", "esc: back")
+		return "No " + m.noun + " found.\n\n" + renderHelp(m.styles.HelpBar, "r: refresh", "esc: back")
 	}
-	help := []string{"r: refresh", "esc: back"}
+	help := append(m.actions.help(), "r: refresh", "esc: back")
 	if m.onSelect != nil {
 		help = append([]string{"enter: details"}, help...)
 	}
-	return m.table.View() + "\n" + renderHelp(m.helpBar, help...)
+	return m.actions.withStatus(m.table.View(), m.styles) + "\n" + renderHelp(m.styles.HelpBar, help...)
 }
 
 func (m ListModel[T]) buildTable() table.Model {

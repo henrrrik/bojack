@@ -35,6 +35,20 @@ func (f *fakeStatsRunner) TemplateList(context.Context) ([]runway.Template, erro
 	return []runway.Template{{Name: "valkey"}}, nil
 }
 
+func (f *fakeStatsRunner) ServiceBackupCreate(_ context.Context, name string) error {
+	f.calls = append(f.calls, "backup "+name)
+	return nil
+}
+
+func (f *fakeStatsRunner) DomainVerify(_ context.Context, domain string) error {
+	f.calls = append(f.calls, "verify "+domain)
+	return nil
+}
+
+func (f *fakeStatsRunner) DomainList(context.Context) ([]runway.RootDomain, error) {
+	return []runway.RootDomain{{Domain: "example.com"}}, nil
+}
+
 func (f *fakeStatsRunner) AppRestart(_ context.Context, name string) error {
 	f.calls = append(f.calls, "restart app "+name)
 	return nil
@@ -262,39 +276,63 @@ func TestAllListViewsRegistered(t *testing.T) {
 	}
 }
 
-func TestRestartRequestCallsRunner(t *testing.T) {
-	for _, tt := range []struct {
-		service bool
-		want    string
-	}{{false, "restart app terry"}, {true, "restart service terry"}} {
+func TestActionRequestCallsRunner(t *testing.T) {
+	for kind, want := range map[msg.ActionKind]string{
+		msg.ActionRestartApp:     "restart app x",
+		msg.ActionRestartService: "restart service x",
+		msg.ActionCreateBackup:   "backup x",
+		msg.ActionVerifyDomain:   "verify x",
+	} {
 		fake := &fakeStatsRunner{}
-		_, cmd := NewModel(fake).Update(msg.RestartRequestMsg{Name: "terry", Service: tt.service})
+		_, cmd := NewModel(fake).Update(msg.ActionRequestMsg{Kind: kind, Target: "x"})
 		if cmd == nil {
-			t.Fatal("expected a restart command")
+			t.Fatalf("kind %d: expected a command", kind)
 		}
-		res, ok := cmd().(msg.RestartResultMsg)
-		if !ok || res.Name != "terry" || res.Service != tt.service || res.Err != nil {
-			t.Errorf("cmd() = %#v", res)
+		res, ok := cmd().(msg.ActionResultMsg)
+		if !ok || res.Kind != kind || res.Target != "x" || res.Err != nil {
+			t.Errorf("kind %d: cmd() = %#v", kind, res)
 		}
-		if len(fake.calls) != 1 || fake.calls[0] != tt.want {
-			t.Errorf("calls = %v, want [%s]", fake.calls, tt.want)
+		if len(fake.calls) != 1 || fake.calls[0] != want {
+			t.Errorf("kind %d: calls = %v, want [%s]", kind, fake.calls, want)
 		}
 	}
 }
 
-func TestRestartSuccessRefetchesCurrentDetail(t *testing.T) {
+func pressKeys(m tea.Model, keys ...string) tea.Model {
+	for _, k := range keys {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)})
+	}
+	return m
+}
+
+func TestActionSuccessRefetchesDetail(t *testing.T) {
 	result, _ := NewModel(&fakeStatsRunner{}).handleNavigate(msg.NavigateMsg{View: msg.ViewAppDetail, Param: "terry"})
-	for _, k := range []string{"R", "y"} { // start the restart from the view
-		result, _ = result.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)})
-	}
-	result, cmd := result.(Model).Update(msg.RestartResultMsg{Name: "terry"})
+	result = pressKeys(result, "R", "y")
+	result, cmd := result.Update(msg.ActionResultMsg{Kind: msg.ActionRestartApp, Target: "terry"})
 	if cmd == nil {
-		t.Error("a successful restart of the current app should refetch its details")
+		t.Error("a successful action should refetch the view")
 	}
-	if !strings.Contains(result.(Model).View(), "Restarted terry.") {
-		t.Errorf("result should reach the detail view, got:\n%s", result.(Model).View())
+	if !strings.Contains(result.View(), "Restarted terry.") {
+		t.Errorf("result should reach the view, got:\n%s", result.View())
 	}
-	if _, cmd = result.(Model).Update(msg.RestartResultMsg{Name: "terry", Err: errors.New("x")}); cmd != nil {
-		t.Error("a failed restart should not refetch")
+	if _, cmd = result.Update(msg.ActionResultMsg{Kind: msg.ActionRestartApp, Target: "terry", Err: errors.New("x")}); cmd != nil {
+		t.Error("a failed action should not refetch")
+	}
+}
+
+func TestActionSuccessRefetchesList(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewDomainList})
+	result, _ = result.Update(cmd())
+	result = pressKeys(result, "V", "y")
+	result, cmd = result.Update(msg.ActionResultMsg{Kind: msg.ActionVerifyDomain, Target: "example.com"})
+	if cmd == nil {
+		t.Fatal("a successful action should refetch the list")
+	}
+	if _, ok := cmd().(msg.ListResultMsg[runway.RootDomain]); !ok {
+		t.Errorf("refetch should reload domains, got %#v", cmd())
+	}
+	if !strings.Contains(result.View(), "Verification check for example.com done.") {
+		t.Errorf("result should reach the list, got:\n%s", result.View())
 	}
 }
