@@ -119,7 +119,7 @@ func (m ServiceDetailModel) handleKey(k tea.KeyMsg) (ServiceDetailModel, tea.Cmd
 	case "shift+tab":
 		m.activeTab = (m.activeTab - 1 + len(serviceTabs)) % len(serviceTabs)
 	case revealKey:
-		if m.activeTab == serviceDSNTab {
+		if m.activeTab == serviceDSNTab || m.activeTab == serviceConfigTab {
 			m.revealSecrets = !m.revealSecrets
 		}
 	case statsIntervalKey:
@@ -141,7 +141,7 @@ func (m ServiceDetailModel) View() string {
 	switch m.activeTab {
 	case serviceStatsTab:
 		help = append([]string{"i: interval"}, help...)
-	case serviceDSNTab:
+	case serviceConfigTab, serviceDSNTab:
 		help = append([]string{revealHelp(m.revealSecrets)}, help...)
 	}
 	b.WriteString("\n" + renderHelp(m.styles.HelpBar, help...))
@@ -216,19 +216,7 @@ func (m ServiceDetailModel) renderInfoTab() string {
 }
 
 func (m ServiceDetailModel) renderConfigTab() string {
-	if len(m.config) == 0 {
-		return "No config vars set."
-	}
-	keys := make([]string, 0, len(m.config))
-	for k := range m.config {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var b strings.Builder
-	for _, k := range keys {
-		b.WriteString(m.styles.Label.Render(k+":") + " " + m.styles.Value.Render(m.config[k]) + "\n")
-	}
-	return b.String()
+	return renderConfig(m.styles, m.config, m.revealSecrets)
 }
 
 func (m ServiceDetailModel) renderBackupsTab() string {
