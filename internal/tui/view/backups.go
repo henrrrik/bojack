@@ -22,7 +22,7 @@ func renderBackups(raw json.RawMessage) string {
 		return prettyJSON(raw)
 	}
 	if len(items) == 0 {
-		return "No backups found."
+		return "No backups yet. Backups aren't available on dev plans."
 	}
 	cols := backupColumns(items)
 	rows := make([][]string, len(items))

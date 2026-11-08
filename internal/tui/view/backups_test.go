@@ -10,7 +10,7 @@ import (
 
 func TestRenderBackupsEmpty(t *testing.T) {
 	for _, raw := range []string{``, `null`, `[]`, `{"count":0,"results":[]}`, `{"data":null}`} {
-		if got := renderBackups(json.RawMessage(raw)); got != "No backups found." {
+		if got := renderBackups(json.RawMessage(raw)); got != "No backups yet. Backups aren't available on dev plans." {
 			t.Errorf("renderBackups(%q) = %q, want no backups", raw, got)
 		}
 	}

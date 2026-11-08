@@ -9,6 +9,7 @@ All notable changes to bojack. The format follows
 ### Changed
 
 - The main menu and the terminal title say "Bojack - Runway Manager".
+- An empty Backups tab explains that dev plans have no backups.
 
 ## [0.1.0] - 2026-11-08
 
