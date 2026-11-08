@@ -2,12 +2,12 @@ package view
 
 import (
 	"math"
-
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/henrrrik/runway-tui/internal/msg"
 	"strconv"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
@@ -58,30 +58,89 @@ func statsIntervalLabel(arg string) string {
 	return arg
 }
 
-// renderStats renders a stats tab: the interval header followed by one row
-// per metric with its latest value and a sparkline.
-func renderStats(styles DetailStyles, stats runway.Stats, width int, interval string) string {
+// statsView renders a stats tab: one summary line per metric, with the
+// selected metric charted below them.
+type statsView struct {
+	cursor int // selected metric, in OrderedKeys order
+}
+
+// Chart size limits, in cells.
+const (
+	minChartHeight = 6
+	maxChartHeight = 18
+	maxChartWidth  = 120
+	overviewSpark  = 30
+)
+
+// key moves the selection among n metrics; ok reports whether k was a stats key.
+func (s statsView) key(k string, n int) (statsView, bool) {
+	switch k {
+	case "up", "k":
+		s.cursor = max(0, min(s.cursor, n-1)-1)
+	case "down", "j":
+		s.cursor = min(n-1, s.cursor+1)
+	default:
+		return s, false
+	}
+	return s, true
+}
+
+// render draws the tab in width by height cells.
+func (s statsView) render(styles DetailStyles, stats runway.Stats, width, height int, interval string) string {
 	var b strings.Builder
 	b.WriteString(styles.Label.Render("Interval:") + styles.Value.Render(statsIntervalLabel(interval)) + "\n\n")
 	if len(stats) == 0 {
 		b.WriteString("No stats available.\n")
 		return b.String()
 	}
-	graphWidth := width - 4
-	if graphWidth > 60 {
-		graphWidth = 60
-	}
 	keys := stats.OrderedKeys()
-	label := styles.Label.Width(statsLabelWidth(stats, keys, styles.Label.GetWidth()))
-	for _, key := range keys {
-		metric := stats[key]
-		b.WriteString(label.Render(metricTitle(key, metric)+":") + renderStatValue(styles, metric) + "\n")
-		if graph := sparkline(metric.Values(), graphWidth); graph != "" {
-			b.WriteString("  " + styles.Sparkline.Render(graph) + "\n")
+	sel := min(s.cursor, len(keys)-1)
+	b.WriteString(renderOverview(styles, stats, keys, sel, width))
+	chartH := min(maxChartHeight, height-2-len(keys)-2)
+	if chartH < minChartHeight {
+		return b.String()
+	}
+	metric := stats[keys[sel]]
+	title := metricTitle(keys[sel], metric)
+	if metric.Unit != "" {
+		title += " (" + metric.Unit + ")"
+	}
+	b.WriteString("\n" + styles.Value.Bold(true).Render(title) + "\n")
+	b.WriteString(renderChart(styles, metric, min(width-2, maxChartWidth), chartH))
+	return b.String()
+}
+
+// renderOverview renders one line per metric: a selection marker, the title,
+// the latest value against the limit, and a sparkline.
+func renderOverview(styles DetailStyles, stats runway.Stats, keys []string, sel, width int) string {
+	titleW := statsLabelWidth(stats, keys, 0)
+	values := make([]string, len(keys))
+	valueW := 0
+	for i, k := range keys {
+		values[i] = renderStatValue(styles, stats[k])
+		valueW = max(valueW, lipgloss.Width(values[i]))
+	}
+	sparkW := min(overviewSpark, width-2-titleW-valueW-2)
+	var b strings.Builder
+	for i, k := range keys {
+		metric := stats[k]
+		marker, title := "  ", styles.Label.UnsetWidth().Render(padRight(metricTitle(k, metric), titleW))
+		if i == sel {
+			marker = styles.Title.UnsetPaddingLeft().Render("› ")
+			title = styles.Value.Bold(true).Render(padRight(metricTitle(k, metric), titleW))
 		}
-		b.WriteString("\n")
+		line := marker + title + padRight(values[i], valueW)
+		if graph := sparkline(metric.Values(), sparkW); sparkW > 0 && graph != "" {
+			line += "  " + styles.Sparkline.Render(graph)
+		}
+		b.WriteString(line + "\n")
 	}
 	return b.String()
+}
+
+// padRight pads s, which may contain styling, to w cells.
+func padRight(s string, w int) string {
+	return s + strings.Repeat(" ", max(0, w-lipgloss.Width(s)))
 }
 
 func metricTitle(key string, metric runway.StatsMetric) string {
@@ -207,4 +266,18 @@ func downsample(values []float64, width int) []float64 {
 		out[i] = maxV
 	}
 	return out
+}
+
+// detailBodyHeight is the height left for a detail view's active tab, given
+// the terminal height: the title, tab bar and help take 6 lines, the follow
+// banner 2 more, and the action status line its own height.
+func detailBodyHeight(height int, following bool, status string) int {
+	h := height - 6
+	if following {
+		h -= 2
+	}
+	if status != "" {
+		h -= lipgloss.Height(status)
+	}
+	return h
 }

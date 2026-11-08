@@ -24,6 +24,7 @@ type AppDetailModel struct {
 	appName       string
 	activeTab     int
 	statsInterval string
+	statsView     statsView
 	actions       actionPrompt
 	follow        follower
 	logOptions    runway.LogOptions
@@ -199,6 +200,10 @@ func (m AppDetailModel) tabKey(k string) (AppDetailModel, tea.Cmd) {
 }
 
 func (m AppDetailModel) statsKey(k string) (AppDetailModel, tea.Cmd) {
+	if s, ok := m.statsView.key(k, len(m.stats)); ok {
+		m.statsView = s
+		return m, nil
+	}
 	var cmd tea.Cmd
 	switch k {
 	case followKey:
@@ -240,7 +245,7 @@ func (m AppDetailModel) View() string {
 	}
 	switch m.activeTab {
 	case appStatsTab:
-		help = append([]string{"i: interval"}, help...)
+		help = append([]string{"↑/↓: metric", "i: interval"}, help...)
 	case appConfigTab:
 		help = append([]string{revealHelp(m.revealSecrets)}, help...)
 	case appLogsTab:
@@ -248,6 +253,11 @@ func (m AppDetailModel) View() string {
 	}
 	b.WriteString("\n" + renderHelp(m.styles.HelpBar, help...))
 	return b.String()
+}
+
+// bodyHeight is the height left for the active tab.
+func (m AppDetailModel) bodyHeight() int {
+	return detailBodyHeight(m.height, m.follow.on && m.isLiveTab(), m.actions.status(m.styles))
 }
 
 func (m AppDetailModel) renderTabs() string {
@@ -275,7 +285,7 @@ func (m AppDetailModel) renderActiveTab() string {
 	case 1:
 		return m.renderProcessesTab()
 	case appStatsTab:
-		return renderStats(m.styles, m.stats, m.width, m.statsInterval)
+		return m.statsView.render(m.styles, m.stats, m.width, m.bodyHeight(), m.statsInterval)
 	case appConfigTab:
 		return m.renderConfigTab()
 	case 4:

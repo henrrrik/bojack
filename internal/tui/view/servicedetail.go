@@ -28,6 +28,7 @@ type ServiceDetailModel struct {
 	name          string
 	activeTab     int
 	statsInterval string
+	statsView     statsView
 	actions       actionPrompt
 	follow        follower
 	revealSecrets bool
@@ -161,6 +162,10 @@ func (m ServiceDetailModel) tabKey(k string) (ServiceDetailModel, tea.Cmd) {
 }
 
 func (m ServiceDetailModel) statsKey(k string) (ServiceDetailModel, tea.Cmd) {
+	if s, ok := m.statsView.key(k, len(m.stats)); ok {
+		m.statsView = s
+		return m, nil
+	}
 	var cmd tea.Cmd
 	switch k {
 	case followKey:
@@ -185,12 +190,17 @@ func (m ServiceDetailModel) View() string {
 	help = append(help, "esc: back")
 	switch m.activeTab {
 	case serviceStatsTab:
-		help = append([]string{"i: interval", m.follow.help()}, help...)
+		help = append([]string{"↑/↓: metric", "i: interval", m.follow.help()}, help...)
 	case serviceConfigTab, serviceDSNTab:
 		help = append([]string{revealHelp(m.revealSecrets)}, help...)
 	}
 	b.WriteString("\n" + renderHelp(m.styles.HelpBar, help...))
 	return b.String()
+}
+
+// bodyHeight is the height left for the active tab.
+func (m ServiceDetailModel) bodyHeight() int {
+	return detailBodyHeight(m.height, m.follow.on && m.activeTab == serviceStatsTab, m.actions.status(m.styles))
 }
 
 func (m ServiceDetailModel) renderTabs() string {
@@ -216,7 +226,7 @@ func (m ServiceDetailModel) renderActiveTab() string {
 	case serviceInfoTab:
 		return m.renderInfoTab()
 	case serviceStatsTab:
-		return renderStats(m.styles, m.stats, m.width, m.statsInterval)
+		return m.statsView.render(m.styles, m.stats, m.width, m.bodyHeight(), m.statsInterval)
 	case serviceConfigTab:
 		return m.renderConfigTab()
 	case serviceBackupsTab:

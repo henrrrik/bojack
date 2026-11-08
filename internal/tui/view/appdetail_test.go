@@ -9,6 +9,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -454,5 +455,18 @@ func TestDescribeJSON(t *testing.T) {
 		if got := describeJSON(json.RawMessage(tt.in)); got != tt.want {
 			t.Errorf("describeJSON(%s) = %q, want %q", tt.in, got, tt.want)
 		}
+	}
+}
+
+func TestAppStatsArrowSelectsMetric(t *testing.T) {
+	m := NewAppDetailModel("terry", testDetailStyles(), 100, 40)
+	m.activeTab = appStatsTab
+	m, _ = m.Update(msg.AppStatsResultMsg{Stats: twoMetrics(), Interval: DefaultStatsInterval})
+	if !strings.Contains(m.View(), "↑/↓: metric") {
+		t.Errorf("help should offer ↑/↓, got:\n%s", m.View())
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	if v := ansi.Strip(m.View()); !strings.Contains(v, "128┤") {
+		t.Errorf("down should chart the second metric, got:\n%s", v)
 	}
 }
