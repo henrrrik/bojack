@@ -48,10 +48,13 @@ go run ./cmd/runway-tui
 
 ```sh
 go test -v -race ./...
-gofmt -s -w .
-go vet ./...
-gocyclo -over 10 .
+golangci-lint fmt
+golangci-lint run ./...
 ```
+
+Linting uses [golangci-lint](https://golangci-lint.run) v2 (config in `.golangci.yml`):
+the standard linters (`go vet`, staticcheck, errcheck, …), gofmt `-s`, and gocyclo
+with a cyclomatic complexity limit of 10.
 
 The CLI is accessed through the `runway.Runner` / `CommandExecutor` interfaces in
 `internal/runway`, so tests use fakes instead of calling the real binary. The JSON
