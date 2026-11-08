@@ -52,7 +52,7 @@ go run ./cmd/runway-tui
 | ------------------- | ---------------------------- |
 | `↑`/`↓`, `j`/`k`    | Move                         |
 | `enter`             | Select                       |
-| `tab` / `shift+tab` | Next / previous tab          |
+| `tab` / `shift+tab` | Next / previous tab (or click a tab) |
 | `↑`/`↓`, `j`/`k`    | Stats tab: select the metric to chart |
 | `p`                 | Stats tab: pin the selected metric, to chart it above the selected one for comparison; again to unpin |
 | `i`                 | Cycle stats interval (1h / 6h / 24h / 7d / 30d) |
@@ -72,6 +72,9 @@ go run ./cmd/runway-tui
 | `S`                 | Volume details: grow the volume to a new size in MiB (only for resizable volumes; asks to confirm) |
 | `esc`               | Back                         |
 | `q`, `ctrl+c`       | Quit                         |
+
+The TUI turns on mouse reporting so tabs can be clicked. Most terminals still let you
+select text by holding `shift` (`option` in iTerm2 and Terminal.app) while dragging.
 
 ## Development
 

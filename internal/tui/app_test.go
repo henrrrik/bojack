@@ -514,3 +514,9 @@ func TestViewIsFullScreen(t *testing.T) {
 		t.Error("the TUI should use the alternate screen")
 	}
 }
+
+func TestViewReportsMouseClicks(t *testing.T) {
+	if NewModel(nil).View().MouseMode != tea.MouseModeCellMotion {
+		t.Error("the TUI should receive mouse clicks")
+	}
+}

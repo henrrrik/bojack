@@ -8,7 +8,6 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -86,6 +85,8 @@ func (m ServiceDetailModel) Update(teaMsg tea.Msg) (ServiceDetailModel, tea.Cmd)
 		return m, m.onFollowTick(teaMsg)
 	case tea.KeyPressMsg:
 		return m.handleKey(teaMsg)
+	case tea.MouseClickMsg:
+		return m.handleClick(teaMsg), nil
 	default:
 		m = m.applyResult(teaMsg)
 	}
@@ -196,7 +197,7 @@ func (m ServiceDetailModel) statsKey(k string) (ServiceDetailModel, tea.Cmd) {
 
 func (m ServiceDetailModel) View() string {
 	var b strings.Builder
-	b.WriteString(m.styles.Title.Render("Service: "+m.name) + "\n\n")
+	b.WriteString(m.title() + "\n\n")
 	b.WriteString(m.renderTabs() + "\n\n")
 	if m.follow.on && m.activeTab == serviceStatsTab {
 		b.WriteString(m.follow.banner(m.styles) + "\n\n")
@@ -220,15 +221,7 @@ func (m ServiceDetailModel) bodyHeight() int {
 }
 
 func (m ServiceDetailModel) renderTabs() string {
-	var tabs []string
-	for i, t := range serviceTabs {
-		if i == m.activeTab {
-			tabs = append(tabs, m.styles.TabActive.Render(t))
-		} else {
-			tabs = append(tabs, m.styles.TabInactive.Render(t))
-		}
-	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, tabs...)
+	return renderTabBar(m.styles, serviceTabs, m.activeTab)
 }
 
 func (m ServiceDetailModel) renderActiveTab() string {
@@ -312,4 +305,20 @@ func (m ServiceDetailModel) renderDSNTab() string {
 		b.WriteString(m.styles.Label.Render(k+":") + " " + m.styles.Value.Render(v) + "\n")
 	}
 	return b.String()
+}
+
+func (m ServiceDetailModel) title() string {
+	return m.styles.Title.Render("Service: " + m.name)
+}
+
+// handleClick switches to a clicked tab, unless an action is waiting for
+// input or confirmation.
+func (m ServiceDetailModel) handleClick(c tea.MouseClickMsg) ServiceDetailModel {
+	if m.actions.claimsKeys() {
+		return m
+	}
+	if i, ok := clickedTab(c, m.styles, m.title(), serviceTabs, m.activeTab); ok {
+		m.activeTab = i
+	}
+	return m
 }

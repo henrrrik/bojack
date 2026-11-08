@@ -165,10 +165,11 @@ func (m Model) Update(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.updateCurrentView(teaMsg)
 }
 
-// View renders the current view full-screen.
+// View renders the current view full-screen, with mouse clicks reported.
 func (m Model) View() tea.View {
 	v := tea.NewView(m.render())
 	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion // for clicking tabs
 	return v
 }
 

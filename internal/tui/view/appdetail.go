@@ -6,7 +6,6 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
@@ -98,6 +97,8 @@ func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
 		return m, m.onFollowTick(teaMsg)
 	case tea.KeyPressMsg:
 		return m.handleKey(teaMsg)
+	case tea.MouseClickMsg:
+		return m.handleClick(teaMsg), nil
 	default:
 		m = m.applyResult(teaMsg)
 	}
@@ -252,7 +253,7 @@ func (m AppDetailModel) logsKey(k string) (AppDetailModel, tea.Cmd) {
 
 func (m AppDetailModel) View() string {
 	var b strings.Builder
-	b.WriteString(m.styles.Title.Render("App: "+m.appName) + "\n\n")
+	b.WriteString(m.title() + "\n\n")
 	b.WriteString(m.renderTabs() + "\n\n")
 	if m.follow.on && m.isLiveTab() {
 		b.WriteString(m.follow.banner(m.styles) + "\n\n")
@@ -281,15 +282,7 @@ func (m AppDetailModel) bodyHeight() int {
 }
 
 func (m AppDetailModel) renderTabs() string {
-	var tabs []string
-	for i, t := range appTabs {
-		if i == m.activeTab {
-			tabs = append(tabs, m.styles.TabActive.Render(t))
-		} else {
-			tabs = append(tabs, m.styles.TabInactive.Render(t))
-		}
-	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, tabs...)
+	return renderTabBar(m.styles, appTabs, m.activeTab)
 }
 
 func (m AppDetailModel) renderActiveTab() string {
@@ -408,4 +401,20 @@ func (m AppDetailModel) renderLogsTab() string {
 		fmt.Fprintf(&b, "  %s  [%s]  %s\n", entry.Time, entry.Type, entry.Content)
 	}
 	return b.String()
+}
+
+func (m AppDetailModel) title() string {
+	return m.styles.Title.Render("App: " + m.appName)
+}
+
+// handleClick switches to a clicked tab, unless an action is waiting for
+// input or confirmation.
+func (m AppDetailModel) handleClick(c tea.MouseClickMsg) AppDetailModel {
+	if m.actions.claimsKeys() {
+		return m
+	}
+	if i, ok := clickedTab(c, m.styles, m.title(), appTabs, m.activeTab); ok {
+		m.activeTab = i
+	}
+	return m
 }
