@@ -8,8 +8,11 @@ command and renders the result, so it sees exactly what the CLI sees.
 ## Features
 
 - **Apps:** list with type, plan, region, role and status. The detail view has tabs for
-  Info, Processes, Stats (CPU, memory, disk and network with usage vs. plan limit and sparklines), Config, Domains,
-  Sharing and Logs.
+  Info, Processes, Stats, Config, Domains, Sharing and Logs.
+- **Stats** (apps and services): one line per metric with its latest value against the plan limit and a
+  sparkline, and a braille line chart of the selected metric (`↑`/`↓`) with time and value axes, scaled from 0 to
+  the plan limit, with the warning and critical thresholds drawn in. Charts use
+  [ntcharts](https://github.com/NimbleMarkets/ntcharts).
 - **Services:** details, stats (including database metrics), config, backups and DSN.
 - **Volumes, Domains, Policies, Regions, Plans, Templates, Registries, SSH Keys, API Keys:**
   simple tables. SSH keys show their `SHA256:` fingerprint, as `ssh-keygen -l` prints it.
@@ -42,6 +45,7 @@ go run ./cmd/runway-tui
 | `↑`/`↓`, `j`/`k`    | Move                         |
 | `enter`             | Select                       |
 | `tab` / `shift+tab` | Next / previous tab          |
+| `↑`/`↓`, `j`/`k`    | Stats tab: select the metric to chart |
 | `i`                 | Cycle stats interval (1h / 6h / 24h / 7d / 30d) |
 | `f`                 | Stats / Logs tabs: follow (auto-refresh every 15s); again to stop |
 | `v`                 | Config / DSN tabs: reveal / hide secrets (hidden by default) |
