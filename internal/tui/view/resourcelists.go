@@ -53,15 +53,28 @@ func serviceRow(s runway.Service) table.Row {
 // NewVolumeListModel lists volumes.
 func NewVolumeListModel(helpBar lipgloss.Style, width, height int) ListModel[runway.Volume] {
 	return NewListModel("volumes", []table.Column{
-		{Title: "Name", Width: 20},
-		{Title: "App", Width: 20},
+		{Title: "Name", Width: 30},
+		{Title: "App", Width: 24},
 		{Title: "Mountpoint", Width: 28},
-		{Title: "Size", Width: 14},
+		{Title: "Size", Width: 10},
+		{Title: "Extra", Width: 10},
+		{Title: "Replicas", Width: 8},
 	}, volumeRow, helpBar, width, height)
 }
 
 func volumeRow(v runway.Volume) table.Row {
-	return table.Row{v.Name, v.App, v.Mountpoint, formatMB(strconv.Itoa(v.SizeMB))}
+	extra := "-"
+	if v.SizeExtraMB > 0 {
+		extra = formatMB(strconv.Itoa(v.SizeExtraMB))
+	}
+	replicas := "-"
+	switch {
+	case v.IsReplica:
+		replicas = "replica"
+	case len(v.Replicas) > 0:
+		replicas = strconv.Itoa(len(v.Replicas))
+	}
+	return table.Row{v.Name, v.App, v.Mountpoint, formatMB(strconv.Itoa(v.SizeMB)), extra, replicas}
 }
 
 // NewDomainListModel lists root domains.

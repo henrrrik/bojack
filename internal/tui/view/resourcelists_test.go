@@ -1,6 +1,7 @@
 package view
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -29,7 +30,12 @@ func TestVolumeListShowsSize(t *testing.T) {
 
 func TestVolumeRow(t *testing.T) {
 	assertRow(t, volumeRow(runway.Volume{Name: "data", App: "my-db", Mountpoint: "/data", SizeMB: 512}),
-		table.Row{"data", "my-db", "/data", "512 MB"})
+		table.Row{"data", "my-db", "/data", "512 MB", "-", "-"})
+	assertRow(t, volumeRow(runway.Volume{Name: "data", SizeMB: 5120, SizeExtraMB: 1024,
+		Replicas: []json.RawMessage{json.RawMessage(`"r1"`), json.RawMessage(`"r2"`)}}),
+		table.Row{"data", "", "", "5.0 GB", "1.0 GB", "2"})
+	assertRow(t, volumeRow(runway.Volume{Name: "data-r1", SizeMB: 512, IsReplica: true}),
+		table.Row{"data-r1", "", "", "512 MB", "-", "replica"})
 }
 
 func TestDomainRow(t *testing.T) {

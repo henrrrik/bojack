@@ -18,6 +18,7 @@ const appListJSON = `[
       "type": "app",
       "plan": "standard-1",
       "region": "eu-north-1",
+      "source": "buildpack",
       "features": [
         {"name": "metrics", "value": true},
         {"name": "autoscale", "value": false}
@@ -66,8 +67,15 @@ const appDetailJSON = `{
     "type": "app",
     "plan": "standard-1",
     "region": "eu-north-1",
+    "source": "buildkit",
     "features": [],
     "meta": {"role": "owner"}
+  },
+  "status": {
+    "status": "running",
+    "deployment_status": "deploying",
+    "build_status": "",
+    "integrations": [{"name": "sentry"}]
   },
   "domains": [],
   "settings": {
@@ -209,8 +217,8 @@ const volumeListJSON = `[
     "app": "my-db",
     "mountpoint": "/var/lib/postgresql",
     "size": 5120,
-    "size_extra": 0,
-    "replicas": [],
+    "size_extra": 1024,
+    "replicas": ["data-r1"],
     "is_replica": false,
     "attachable": false,
     "detachable": false,
@@ -765,5 +773,35 @@ func TestUnmarshalAPIKeys(t *testing.T) {
 	}
 	if got[1].LastUsed != "" {
 		t.Errorf("null last_used should decode to empty, got %q", got[1].LastUsed)
+	}
+}
+
+func TestUnmarshalAppListSource(t *testing.T) {
+	if e := unmarshalAppListEntry(t); e.App.Source != "buildpack" {
+		t.Errorf("App.Source = %q, want buildpack", e.App.Source)
+	}
+}
+
+func TestUnmarshalAppDetailSourceAndStatus(t *testing.T) {
+	var d AppDetail
+	if err := json.Unmarshal([]byte(appDetailJSON), &d); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if d.App.Source != "buildkit" || d.Status.Status != "running" || d.Status.DeploymentStatus != "deploying" {
+		t.Errorf("source/status = %q / %+v", d.App.Source, d.Status)
+	}
+	if len(d.Status.Integrations) != 1 || string(d.Status.Integrations[0]) != `{"name": "sentry"}` {
+		t.Errorf("Integrations = %s", d.Status.Integrations)
+	}
+}
+
+func TestUnmarshalVolumeExtras(t *testing.T) {
+	var volumes []Volume
+	if err := json.Unmarshal([]byte(volumeListJSON), &volumes); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	v := volumes[0]
+	if v.SizeExtraMB != 1024 || v.IsReplica || len(v.Replicas) != 1 || string(v.Replicas[0]) != `"data-r1"` {
+		t.Errorf("volume extras = extra %d, replica %v, replicas %s", v.SizeExtraMB, v.IsReplica, v.Replicas)
 	}
 }

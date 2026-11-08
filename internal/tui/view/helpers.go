@@ -1,9 +1,12 @@
 package view
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -126,4 +129,43 @@ func orDash(s string) string {
 		return "-"
 	}
 	return s
+}
+
+// formatAppStatus renders e.g. "running (deployment: deploying, build: -)".
+func formatAppStatus(s runway.AppStatus) string {
+	return fmt.Sprintf("%s (deployment: %s, build: %s)",
+		orDash(s.Status), orDash(s.DeploymentStatus), orDash(s.BuildStatus))
+}
+
+func formatIntegrations(items []json.RawMessage) string {
+	if len(items) == 0 {
+		return "none"
+	}
+	names := make([]string, len(items))
+	for i, it := range items {
+		names[i] = describeJSON(it)
+	}
+	return strings.Join(names, ", ")
+}
+
+// describeJSON summarises a JSON value of unknown schema: a string as is, an
+// object by its "name" or "id", anything else as compact JSON.
+func describeJSON(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var obj map[string]any
+	if json.Unmarshal(raw, &obj) == nil {
+		for _, k := range []string{"name", "id"} {
+			if v, ok := obj[k].(string); ok && v != "" {
+				return v
+			}
+		}
+	}
+	var b bytes.Buffer
+	if json.Compact(&b, raw) != nil {
+		return string(raw)
+	}
+	return b.String()
 }
