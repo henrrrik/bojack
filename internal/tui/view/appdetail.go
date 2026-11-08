@@ -24,6 +24,7 @@ type AppDetailModel struct {
 	appName       string
 	activeTab     int
 	statsInterval string
+	restart       restartPrompt
 	logOptions    runway.LogOptions
 	revealSecrets bool
 	styles        DetailStyles
@@ -50,6 +51,7 @@ func NewAppDetailModel(appName string, styles DetailStyles, width, height int) A
 	return AppDetailModel{
 		appName:       appName,
 		statsInterval: DefaultStatsInterval,
+		restart:       newRestartPrompt(appName, false),
 		logOptions:    DefaultLogOptions,
 		styles:        styles,
 		spinner:       s,
@@ -85,36 +87,37 @@ func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = teaMsg.Width
 		m.height = teaMsg.Height
-	case msg.AppDetailResultMsg:
-		m.loaded[0] = true
-		m.detail = teaMsg.Detail
-		m.errors[0] = teaMsg.Err
-	case msg.AppProcessesResultMsg:
-		m.loaded[1] = true
-		m.processes = teaMsg.Processes
-		m.errors[1] = teaMsg.Err
-	case msg.AppStatsResultMsg:
-		m = m.applyStats(teaMsg.Stats, teaMsg.Interval, teaMsg.Err)
-	case msg.AppConfigResultMsg:
-		m.loaded[3] = true
-		m.config = teaMsg.Config
-		m.errors[3] = teaMsg.Err
-	case msg.AppDomainsResultMsg:
-		m.loaded[4] = true
-		m.domains = teaMsg.Domains
-		m.errors[4] = teaMsg.Err
-	case msg.AppSharesResultMsg:
-		m.loaded[5] = true
-		m.shares = teaMsg.Shares
-		m.errors[5] = teaMsg.Err
-	case msg.AppLogsResultMsg:
-		m = m.applyLogs(teaMsg)
+	case msg.RestartResultMsg:
+		m.restart = m.restart.apply(teaMsg)
 	case tea.KeyMsg:
 		return m.handleKey(teaMsg)
+	default:
+		m = m.applyResult(teaMsg)
 	}
 	var cmd tea.Cmd
 	m.spinner, cmd = m.spinner.Update(teaMsg)
 	return m, cmd
+}
+
+// applyResult stores the data from a fetch result message, if it is one.
+func (m AppDetailModel) applyResult(teaMsg tea.Msg) AppDetailModel {
+	switch teaMsg := teaMsg.(type) {
+	case msg.AppDetailResultMsg:
+		m.loaded[0], m.detail, m.errors[0] = true, teaMsg.Detail, teaMsg.Err
+	case msg.AppProcessesResultMsg:
+		m.loaded[1], m.processes, m.errors[1] = true, teaMsg.Processes, teaMsg.Err
+	case msg.AppStatsResultMsg:
+		m = m.applyStats(teaMsg.Stats, teaMsg.Interval, teaMsg.Err)
+	case msg.AppConfigResultMsg:
+		m.loaded[appConfigTab], m.config, m.errors[appConfigTab] = true, teaMsg.Config, teaMsg.Err
+	case msg.AppDomainsResultMsg:
+		m.loaded[4], m.domains, m.errors[4] = true, teaMsg.Domains, teaMsg.Err
+	case msg.AppSharesResultMsg:
+		m.loaded[5], m.shares, m.errors[5] = true, teaMsg.Shares, teaMsg.Err
+	case msg.AppLogsResultMsg:
+		m = m.applyLogs(teaMsg)
+	}
+	return m
 }
 
 // applyStats stores a stats result, ignoring stale results fetched for a
@@ -142,6 +145,10 @@ func (m AppDetailModel) applyLogs(r msg.AppLogsResultMsg) AppDetailModel {
 }
 
 func (m AppDetailModel) handleKey(k tea.KeyMsg) (AppDetailModel, tea.Cmd) {
+	if p, cmd, ok := m.restart.handleKey(k.String()); ok {
+		m.restart = p
+		return m, cmd
+	}
 	if m.activeTab == appLogsTab {
 		if opts, ok := updateLogOptions(m.logOptions, k.String()); ok {
 			m.logOptions = opts
@@ -172,8 +179,8 @@ func (m AppDetailModel) View() string {
 	var b strings.Builder
 	b.WriteString(m.styles.Title.Render("App: "+m.appName) + "\n\n")
 	b.WriteString(m.renderTabs() + "\n\n")
-	b.WriteString(m.renderActiveTab())
-	help := []string{"tab: switch tab", "o: open", "esc: back"}
+	b.WriteString(m.restart.withStatus(m.renderActiveTab(), m.styles))
+	help := []string{"tab: switch tab", "o: open", "R: restart", "esc: back"}
 	switch m.activeTab {
 	case appStatsTab:
 		help = append([]string{"i: interval"}, help...)

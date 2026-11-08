@@ -3,8 +3,10 @@ package runway
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -24,6 +26,8 @@ type Runner interface {
 	AppShares(ctx context.Context, appName string) (*AppShareList, error)
 	AppLogs(ctx context.Context, appName string, opts LogOptions) ([]LogEntry, error)
 	AppOpen(ctx context.Context, appName string) error
+	AppRestart(ctx context.Context, appName string) error
+	ServiceRestart(ctx context.Context, name string) error
 	ServiceList(ctx context.Context) ([]Service, error)
 	ServiceShow(ctx context.Context, name string) (*Service, error)
 	ServiceDSN(ctx context.Context, name string) (ServiceDSN, error)
@@ -51,8 +55,48 @@ func NewExecCommandExecutor(binary string) *ExecCommandExecutor {
 	return &ExecCommandExecutor{binary: binary}
 }
 
+// Execute runs the binary and returns its stdout. If it fails, the error
+// carries the CLI's own explanation (see cliErrorMessage) when there is one.
 func (e *ExecCommandExecutor) Execute(ctx context.Context, args ...string) ([]byte, error) {
-	return exec.CommandContext(ctx, e.binary, args...).Output()
+	out, err := exec.CommandContext(ctx, e.binary, args...).Output()
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		if msg := cliErrorMessage(out, exitErr.Stderr); msg != "" {
+			return out, &CLIError{Message: msg, Err: err}
+		}
+	}
+	return out, err
+}
+
+// CLIError is a failed CLI command with the CLI's explanation.
+type CLIError struct {
+	Message string
+	Err     error
+}
+
+func (e *CLIError) Error() string { return e.Message }
+func (e *CLIError) Unwrap() error { return e.Err }
+
+// cliErrorMessage extracts the CLI's error message from a failed command's
+// output. With -o json the CLI prints {"error": "..."} on stdout; otherwise
+// it prints a boxed message on stdout, with log lines ("level=...") on
+// stderr. Returns "" if there is no message.
+func cliErrorMessage(stdout, stderr []byte) string {
+	var j struct {
+		Error string `json:"error"`
+	}
+	if json.Unmarshal(stdout, &j) == nil && j.Error != "" {
+		return j.Error
+	}
+	var lines []string
+	for _, l := range strings.Split(string(stdout)+"\n"+string(stderr), "\n") {
+		l = strings.Trim(l, " \t─│╭╮╰╯")
+		if l == "" || strings.HasPrefix(l, "level=") || strings.HasPrefix(l, "ERROR running ") {
+			continue
+		}
+		lines = append(lines, l)
+	}
+	return strings.Join(lines, "; ")
 }
 
 // CLIRunner implements Runner by shelling out to the runway CLI.
@@ -148,6 +192,18 @@ func withoutType(logs []LogEntry, typ string) []LogEntry {
 
 func (r *CLIRunner) AppOpen(ctx context.Context, appName string) error {
 	_, err := r.exec.Execute(ctx, "app", "open", "-a", appName)
+	return err
+}
+
+// AppRestart restarts an app. -y keeps the CLI from prompting.
+func (r *CLIRunner) AppRestart(ctx context.Context, appName string) error {
+	_, err := r.exec.Execute(ctx, "app", "restart", "-a", appName, "-y")
+	return err
+}
+
+// ServiceRestart restarts a service. -y keeps the CLI from prompting.
+func (r *CLIRunner) ServiceRestart(ctx context.Context, name string) error {
+	_, err := r.exec.Execute(ctx, "service", "restart", name, "-y")
 	return err
 }
 

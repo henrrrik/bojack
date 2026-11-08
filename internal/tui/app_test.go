@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -32,6 +33,16 @@ func (f *fakeStatsRunner) AppLogs(_ context.Context, name string, opts runway.Lo
 func (f *fakeStatsRunner) TemplateList(context.Context) ([]runway.Template, error) {
 	f.calls = append(f.calls, "templates")
 	return []runway.Template{{Name: "valkey"}}, nil
+}
+
+func (f *fakeStatsRunner) AppRestart(_ context.Context, name string) error {
+	f.calls = append(f.calls, "restart app "+name)
+	return nil
+}
+
+func (f *fakeStatsRunner) ServiceRestart(_ context.Context, name string) error {
+	f.calls = append(f.calls, "restart service "+name)
+	return nil
 }
 
 func (f *fakeStatsRunner) ServiceStats(_ context.Context, name, interval string) (runway.Stats, error) {
@@ -248,5 +259,42 @@ func TestAllListViewsRegistered(t *testing.T) {
 		if _, ok := listViews[v]; !ok {
 			t.Errorf("view %d not registered", v)
 		}
+	}
+}
+
+func TestRestartRequestCallsRunner(t *testing.T) {
+	for _, tt := range []struct {
+		service bool
+		want    string
+	}{{false, "restart app terry"}, {true, "restart service terry"}} {
+		fake := &fakeStatsRunner{}
+		_, cmd := NewModel(fake).Update(msg.RestartRequestMsg{Name: "terry", Service: tt.service})
+		if cmd == nil {
+			t.Fatal("expected a restart command")
+		}
+		res, ok := cmd().(msg.RestartResultMsg)
+		if !ok || res.Name != "terry" || res.Service != tt.service || res.Err != nil {
+			t.Errorf("cmd() = %#v", res)
+		}
+		if len(fake.calls) != 1 || fake.calls[0] != tt.want {
+			t.Errorf("calls = %v, want [%s]", fake.calls, tt.want)
+		}
+	}
+}
+
+func TestRestartSuccessRefetchesCurrentDetail(t *testing.T) {
+	result, _ := NewModel(&fakeStatsRunner{}).handleNavigate(msg.NavigateMsg{View: msg.ViewAppDetail, Param: "terry"})
+	for _, k := range []string{"R", "y"} { // start the restart from the view
+		result, _ = result.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)})
+	}
+	result, cmd := result.(Model).Update(msg.RestartResultMsg{Name: "terry"})
+	if cmd == nil {
+		t.Error("a successful restart of the current app should refetch its details")
+	}
+	if !strings.Contains(result.(Model).View(), "Restarted terry.") {
+		t.Errorf("result should reach the detail view, got:\n%s", result.(Model).View())
+	}
+	if _, cmd = result.(Model).Update(msg.RestartResultMsg{Name: "terry", Err: errors.New("x")}); cmd != nil {
+		t.Error("a failed restart should not refetch")
 	}
 }

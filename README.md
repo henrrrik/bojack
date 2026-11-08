@@ -2,7 +2,7 @@
 
 A terminal UI for browsing your [Runway](https://runway.horse) apps and services.
 
-It is a read-only front end to the `runway` CLI: every view runs a `runway … -o json`
+It is a mostly read-only front end to the `runway` CLI (the one action is restarting an app or service): every view runs a `runway … -o json`
 command and renders the result, so it sees exactly what the CLI sees.
 
 ## Features
@@ -47,6 +47,7 @@ go run ./cmd/runway-tui
 | `l`                 | Logs: cycle line limit (100 / 500 / 1000) |
 | `r`                 | Refresh                      |
 | `o`                 | Open app in browser          |
+| `R`                 | Restart app / service (asks to confirm with `y`) |
 | `esc`               | Back                         |
 | `q`, `ctrl+c`       | Quit                         |
 
