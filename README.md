@@ -41,6 +41,7 @@ go run ./cmd/runway-tui
 | `enter`             | Select                       |
 | `tab` / `shift+tab` | Next / previous tab          |
 | `i`                 | Cycle stats interval (1h / 6h / 24h / 7d / 30d) |
+| `f`                 | Stats / Logs tabs: follow (auto-refresh every 15s); again to stop |
 | `v`                 | Config / DSN tabs: reveal / hide secrets (hidden by default) |
 | `a` / `b` / `s`     | Logs: toggle app / build / system logs |
 | `t`                 | Logs: cycle time range (all / 1h / 6h / 24h / 7d) |

@@ -29,6 +29,7 @@ type ServiceDetailModel struct {
 	activeTab     int
 	statsInterval string
 	actions       actionPrompt
+	follow        follower
 	revealSecrets bool
 	styles        DetailStyles
 	spinner       spinner.Model
@@ -76,32 +77,46 @@ func (m ServiceDetailModel) Update(teaMsg tea.Msg) (ServiceDetailModel, tea.Cmd)
 	case tea.WindowSizeMsg:
 		m.width = teaMsg.Width
 		m.height = teaMsg.Height
-	case msg.ServiceDetailResultMsg:
-		m.loaded[serviceInfoTab] = true
-		m.service = teaMsg.Service
-		m.errors[serviceInfoTab] = teaMsg.Err
-	case msg.ServiceStatsResultMsg:
-		m = m.applyStats(teaMsg.Stats, teaMsg.Interval, teaMsg.Err)
-	case msg.ServiceConfigResultMsg:
-		m.loaded[serviceConfigTab] = true
-		m.config = teaMsg.Config
-		m.errors[serviceConfigTab] = teaMsg.Err
-	case msg.ServiceBackupsResultMsg:
-		m.loaded[serviceBackupsTab] = true
-		m.backups = teaMsg.Backups
-		m.errors[serviceBackupsTab] = teaMsg.Err
-	case msg.ServiceDSNResultMsg:
-		m.loaded[serviceDSNTab] = true
-		m.dsn = teaMsg.DSN
-		m.errors[serviceDSNTab] = teaMsg.Err
 	case msg.ActionResultMsg:
 		m.actions = m.actions.apply(teaMsg)
+	case msg.FollowTickMsg:
+		return m, m.onFollowTick(teaMsg)
 	case tea.KeyMsg:
 		return m.handleKey(teaMsg)
+	default:
+		m = m.applyResult(teaMsg)
 	}
 	var cmd tea.Cmd
 	m.spinner, cmd = m.spinner.Update(teaMsg)
 	return m, cmd
+}
+
+// applyResult stores the data from a fetch result message, if it is one.
+func (m ServiceDetailModel) applyResult(teaMsg tea.Msg) ServiceDetailModel {
+	switch teaMsg := teaMsg.(type) {
+	case msg.ServiceDetailResultMsg:
+		m.loaded[serviceInfoTab], m.service, m.errors[serviceInfoTab] = true, teaMsg.Service, teaMsg.Err
+	case msg.ServiceStatsResultMsg:
+		m = m.applyStats(teaMsg.Stats, teaMsg.Interval, teaMsg.Err)
+	case msg.ServiceConfigResultMsg:
+		m.loaded[serviceConfigTab], m.config, m.errors[serviceConfigTab] = true, teaMsg.Config, teaMsg.Err
+	case msg.ServiceBackupsResultMsg:
+		m.loaded[serviceBackupsTab], m.backups, m.errors[serviceBackupsTab] = true, teaMsg.Backups, teaMsg.Err
+	case msg.ServiceDSNResultMsg:
+		m.loaded[serviceDSNTab], m.dsn, m.errors[serviceDSNTab] = true, teaMsg.DSN, teaMsg.Err
+	}
+	return m
+}
+
+// onFollowTick refetches stats if that tab is showing, and schedules the next tick.
+func (m ServiceDetailModel) onFollowTick(t msg.FollowTickMsg) tea.Cmd {
+	if !m.follow.accepts(t) {
+		return nil
+	}
+	if m.activeTab == serviceStatsTab {
+		return m.follow.onTick(requestStatsInterval(m.statsInterval))
+	}
+	return m.follow.onTick(nil)
 }
 
 // applyStats stores a stats result, ignoring stale results fetched for a
@@ -126,30 +141,51 @@ func (m ServiceDetailModel) handleKey(k tea.KeyMsg) (ServiceDetailModel, tea.Cmd
 		m.activeTab = (m.activeTab + 1) % len(serviceTabs)
 	case "shift+tab":
 		m.activeTab = (m.activeTab - 1 + len(serviceTabs)) % len(serviceTabs)
-	case revealKey:
-		if m.activeTab == serviceDSNTab || m.activeTab == serviceConfigTab {
+	default:
+		return m.tabKey(k.String())
+	}
+	return m, nil
+}
+
+// tabKey handles keys specific to the active tab.
+func (m ServiceDetailModel) tabKey(k string) (ServiceDetailModel, tea.Cmd) {
+	switch m.activeTab {
+	case serviceStatsTab:
+		return m.statsKey(k)
+	case serviceConfigTab, serviceDSNTab:
+		if k == revealKey {
 			m.revealSecrets = !m.revealSecrets
-		}
-	case statsIntervalKey:
-		if m.activeTab == serviceStatsTab {
-			m.statsInterval = NextStatsInterval(m.statsInterval)
-			m.loaded[serviceStatsTab] = false
-			return m, requestStatsInterval(m.statsInterval)
 		}
 	}
 	return m, nil
+}
+
+func (m ServiceDetailModel) statsKey(k string) (ServiceDetailModel, tea.Cmd) {
+	var cmd tea.Cmd
+	switch k {
+	case followKey:
+		m.follow, cmd = m.follow.toggle()
+	case statsIntervalKey:
+		m.statsInterval = NextStatsInterval(m.statsInterval)
+		m.loaded[serviceStatsTab] = false
+		cmd = requestStatsInterval(m.statsInterval)
+	}
+	return m, cmd
 }
 
 func (m ServiceDetailModel) View() string {
 	var b strings.Builder
 	b.WriteString(m.styles.Title.Render("Service: "+m.name) + "\n\n")
 	b.WriteString(m.renderTabs() + "\n\n")
+	if m.follow.on && m.activeTab == serviceStatsTab {
+		b.WriteString(m.follow.banner(m.styles) + "\n\n")
+	}
 	b.WriteString(m.actions.withStatus(m.renderActiveTab(), m.styles))
 	help := append([]string{"tab: switch tab"}, m.actions.help()...)
 	help = append(help, "esc: back")
 	switch m.activeTab {
 	case serviceStatsTab:
-		help = append([]string{"i: interval"}, help...)
+		help = append([]string{"i: interval", m.follow.help()}, help...)
 	case serviceConfigTab, serviceDSNTab:
 		help = append([]string{revealHelp(m.revealSecrets)}, help...)
 	}

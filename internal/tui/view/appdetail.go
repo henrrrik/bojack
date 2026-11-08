@@ -25,6 +25,7 @@ type AppDetailModel struct {
 	activeTab     int
 	statsInterval string
 	actions       actionPrompt
+	follow        follower
 	logOptions    runway.LogOptions
 	revealSecrets bool
 	styles        DetailStyles
@@ -89,6 +90,8 @@ func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
 		m.height = teaMsg.Height
 	case msg.ActionResultMsg:
 		m.actions = m.actions.apply(teaMsg)
+	case msg.FollowTickMsg:
+		return m, m.onFollowTick(teaMsg)
 	case tea.KeyMsg:
 		return m.handleKey(teaMsg)
 	default:
@@ -132,6 +135,26 @@ func (m AppDetailModel) applyStats(stats runway.Stats, interval string, err erro
 	return m
 }
 
+// isLiveTab reports whether the active tab can auto-refresh.
+func (m AppDetailModel) isLiveTab() bool {
+	return m.activeTab == appStatsTab || m.activeTab == appLogsTab
+}
+
+// onFollowTick refetches the active live tab, keeping its current data on
+// screen until the new data arrives, and schedules the next tick.
+func (m AppDetailModel) onFollowTick(t msg.FollowTickMsg) tea.Cmd {
+	if !m.follow.accepts(t) {
+		return nil
+	}
+	switch m.activeTab {
+	case appStatsTab:
+		return m.follow.onTick(requestStatsInterval(m.statsInterval))
+	case appLogsTab:
+		return m.follow.onTick(requestLogOptions(m.logOptions))
+	}
+	return m.follow.onTick(nil)
+}
+
 // applyLogs stores a logs result, ignoring stale results fetched with
 // previous options.
 func (m AppDetailModel) applyLogs(r msg.AppLogsResultMsg) AppDetailModel {
@@ -149,28 +172,55 @@ func (m AppDetailModel) handleKey(k tea.KeyMsg) (AppDetailModel, tea.Cmd) {
 		m.actions = p
 		return m, cmd
 	}
-	if m.activeTab == appLogsTab {
-		if opts, ok := updateLogOptions(m.logOptions, k.String()); ok {
-			m.logOptions = opts
-			m.loaded[appLogsTab] = false
-			return m, requestLogOptions(opts)
-		}
-	}
 	switch k.String() {
 	case "tab":
 		m.activeTab = (m.activeTab + 1) % len(appTabs)
 	case "shift+tab":
 		m.activeTab = (m.activeTab - 1 + len(appTabs)) % len(appTabs)
-	case revealKey:
-		if m.activeTab == appConfigTab {
+	default:
+		return m.tabKey(k.String())
+	}
+	return m, nil
+}
+
+// tabKey handles keys specific to the active tab.
+func (m AppDetailModel) tabKey(k string) (AppDetailModel, tea.Cmd) {
+	switch m.activeTab {
+	case appStatsTab:
+		return m.statsKey(k)
+	case appLogsTab:
+		return m.logsKey(k)
+	case appConfigTab:
+		if k == revealKey {
 			m.revealSecrets = !m.revealSecrets
 		}
+	}
+	return m, nil
+}
+
+func (m AppDetailModel) statsKey(k string) (AppDetailModel, tea.Cmd) {
+	var cmd tea.Cmd
+	switch k {
+	case followKey:
+		m.follow, cmd = m.follow.toggle()
 	case statsIntervalKey:
-		if m.activeTab == appStatsTab {
-			m.statsInterval = NextStatsInterval(m.statsInterval)
-			m.loaded[appStatsTab] = false
-			return m, requestStatsInterval(m.statsInterval)
-		}
+		m.statsInterval = NextStatsInterval(m.statsInterval)
+		m.loaded[appStatsTab] = false
+		cmd = requestStatsInterval(m.statsInterval)
+	}
+	return m, cmd
+}
+
+func (m AppDetailModel) logsKey(k string) (AppDetailModel, tea.Cmd) {
+	if k == followKey {
+		var cmd tea.Cmd
+		m.follow, cmd = m.follow.toggle()
+		return m, cmd
+	}
+	if opts, ok := updateLogOptions(m.logOptions, k); ok {
+		m.logOptions = opts
+		m.loaded[appLogsTab] = false
+		return m, requestLogOptions(opts)
 	}
 	return m, nil
 }
@@ -179,9 +229,15 @@ func (m AppDetailModel) View() string {
 	var b strings.Builder
 	b.WriteString(m.styles.Title.Render("App: "+m.appName) + "\n\n")
 	b.WriteString(m.renderTabs() + "\n\n")
+	if m.follow.on && m.isLiveTab() {
+		b.WriteString(m.follow.banner(m.styles) + "\n\n")
+	}
 	b.WriteString(m.actions.withStatus(m.renderActiveTab(), m.styles))
 	help := append([]string{"tab: switch tab", "o: open"}, m.actions.help()...)
 	help = append(help, "esc: back")
+	if m.isLiveTab() {
+		help = append([]string{m.follow.help()}, help...)
+	}
 	switch m.activeTab {
 	case appStatsTab:
 		help = append([]string{"i: interval"}, help...)
