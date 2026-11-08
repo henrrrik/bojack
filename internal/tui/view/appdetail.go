@@ -220,7 +220,7 @@ func (m AppDetailModel) tabKey(k string) (AppDetailModel, tea.Cmd) {
 }
 
 func (m AppDetailModel) statsKey(k string) (AppDetailModel, tea.Cmd) {
-	if s, ok := m.statsView.key(k, len(m.stats)); ok {
+	if s, ok := m.statsView.key(k, m.stats.OrderedKeys()); ok {
 		m.statsView = s
 		return m, nil
 	}
@@ -265,7 +265,7 @@ func (m AppDetailModel) View() string {
 	}
 	switch m.activeTab {
 	case appStatsTab:
-		help = append([]string{"↑/↓: metric", "i: interval"}, help...)
+		help = append([]string{"↑/↓: metric", m.statsView.help(), "i: interval"}, help...)
 	case appConfigTab:
 		help = append([]string{revealHelp(m.revealSecrets)}, help...)
 	case appLogsTab:

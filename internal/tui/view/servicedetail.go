@@ -178,7 +178,7 @@ func (m ServiceDetailModel) tabKey(k string) (ServiceDetailModel, tea.Cmd) {
 }
 
 func (m ServiceDetailModel) statsKey(k string) (ServiceDetailModel, tea.Cmd) {
-	if s, ok := m.statsView.key(k, len(m.stats)); ok {
+	if s, ok := m.statsView.key(k, m.stats.OrderedKeys()); ok {
 		m.statsView = s
 		return m, nil
 	}
@@ -206,7 +206,7 @@ func (m ServiceDetailModel) View() string {
 	help = append(help, "esc: back")
 	switch m.activeTab {
 	case serviceStatsTab:
-		help = append([]string{"↑/↓: metric", "i: interval", m.follow.help()}, help...)
+		help = append([]string{"↑/↓: metric", m.statsView.help(), "i: interval", m.follow.help()}, help...)
 	case serviceConfigTab, serviceDSNTab:
 		help = append([]string{revealHelp(m.revealSecrets)}, help...)
 	}

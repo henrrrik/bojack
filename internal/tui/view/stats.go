@@ -59,9 +59,11 @@ func statsIntervalLabel(arg string) string {
 }
 
 // statsView renders a stats tab: one summary line per metric, with the
-// selected metric charted below them.
+// selected metric charted below them. A pinned metric is charted above the
+// selected one, to compare the two over the same time range.
 type statsView struct {
-	cursor int // selected metric, in OrderedKeys order
+	cursor int    // selected metric, in OrderedKeys order
+	pinned string // key of the pinned metric, or ""
 }
 
 // Chart size limits, in cells.
@@ -72,17 +74,49 @@ const (
 	overviewSpark  = 30
 )
 
-// key moves the selection among n metrics; ok reports whether k was a stats key.
-func (s statsView) key(k string, n int) (statsView, bool) {
+const (
+	// pinKey pins the selected metric, or unpins it if it is pinned.
+	pinKey = "p"
+	// pinMarker marks the pinned metric in the overview.
+	pinMarker = "• "
+)
+
+// key moves the selection among the metrics with the given keys, or pins
+// one; ok reports whether k was a stats key.
+func (s statsView) key(k string, keys []string) (statsView, bool) {
+	n := len(keys)
 	switch k {
 	case "up", "k":
 		s.cursor = max(0, min(s.cursor, n-1)-1)
 	case "down", "j":
 		s.cursor = min(n-1, s.cursor+1)
+	case pinKey:
+		s = s.togglePin(keys)
 	default:
 		return s, false
 	}
 	return s, true
+}
+
+func (s statsView) togglePin(keys []string) statsView {
+	if len(keys) == 0 {
+		return s
+	}
+	sel := keys[min(s.cursor, len(keys)-1)]
+	if s.pinned == sel {
+		s.pinned = ""
+	} else {
+		s.pinned = sel
+	}
+	return s
+}
+
+// help is the stats tab's key help.
+func (s statsView) help() string {
+	if s.pinned != "" {
+		return "p: pin/unpin"
+	}
+	return "p: pin to compare"
 }
 
 // render draws the tab in width by height cells.
@@ -95,24 +129,44 @@ func (s statsView) render(styles DetailStyles, stats runway.Stats, width, height
 	}
 	keys := stats.OrderedKeys()
 	sel := min(s.cursor, len(keys)-1)
-	b.WriteString(renderOverview(styles, stats, keys, sel, width))
-	chartH := min(maxChartHeight, height-2-len(keys)-2)
+	b.WriteString(renderOverview(styles, stats, keys, sel, s.pinned, width))
+	charted, chartH := s.chartLayout(stats, keys[sel], height-2-len(keys)-1)
 	if chartH < minChartHeight {
 		return b.String()
 	}
-	metric := stats[keys[sel]]
-	title := metricTitle(keys[sel], metric)
-	if metric.Unit != "" {
-		title += " (" + metric.Unit + ")"
+	metrics := make([]runway.StatsMetric, len(charted))
+	for i, k := range charted {
+		metrics[i] = stats[k]
 	}
-	b.WriteString("\n" + styles.Value.Bold(true).Render(title) + "\n")
-	b.WriteString(renderChart(styles, metric, min(width-2, maxChartWidth), chartH))
+	for i, chart := range renderCharts(styles, metrics, min(width-2, maxChartWidth), chartH) {
+		b.WriteString("\n" + styles.Value.Bold(true).Render(chartTitle(charted[i], metrics[i])) + "\n" + chart)
+	}
 	return b.String()
 }
 
-// renderOverview renders one line per metric: a selection marker, the title,
-// the latest value against the limit, and a sparkline.
-func renderOverview(styles DetailStyles, stats runway.Stats, keys []string, sel, width int) string {
+// chartLayout picks the metrics to chart in room lines, each chart with a
+// title line, and the height of each chart: the pinned and the selected
+// metric if both fit, else only the selected one.
+func (s statsView) chartLayout(stats runway.Stats, selected string, room int) ([]string, int) {
+	if _, ok := stats[s.pinned]; ok && s.pinned != selected {
+		if h := min(maxChartHeight, room/2-1); h >= minChartHeight {
+			return []string{s.pinned, selected}, h
+		}
+	}
+	return []string{selected}, min(maxChartHeight, room-1)
+}
+
+func chartTitle(key string, metric runway.StatsMetric) string {
+	title := metricTitle(key, metric)
+	if metric.Unit != "" {
+		title += " (" + metric.Unit + ")"
+	}
+	return title
+}
+
+// renderOverview renders one line per metric: a selection (or pin) marker,
+// the title, the latest value against the limit, and a sparkline.
+func renderOverview(styles DetailStyles, stats runway.Stats, keys []string, sel int, pinned string, width int) string {
 	titleW := statsLabelWidth(stats, keys, 0)
 	values := make([]string, len(keys))
 	valueW := 0
@@ -125,9 +179,12 @@ func renderOverview(styles DetailStyles, stats runway.Stats, keys []string, sel,
 	for i, k := range keys {
 		metric := stats[k]
 		marker, title := "  ", styles.Label.UnsetWidth().Render(padRight(metricTitle(k, metric), titleW))
-		if i == sel {
+		switch {
+		case i == sel:
 			marker = styles.Title.UnsetPaddingLeft().Render("› ")
 			title = styles.Value.Bold(true).Render(padRight(metricTitle(k, metric), titleW))
+		case k == pinned:
+			marker = styles.Title.UnsetPaddingLeft().Render(pinMarker)
 		}
 		line := marker + title + padRight(values[i], valueW)
 		if graph := sparkline(metric.Values(), sparkW); sparkW > 0 && graph != "" {
