@@ -62,6 +62,20 @@ Linting uses [golangci-lint](https://golangci-lint.run) v2 (config in `.golangci
 the standard linters (`go vet`, staticcheck, errcheck, …), gofmt `-s`, and gocyclo
 with a cyclomatic complexity limit of 10.
 
+### Checking compatibility with a new runway CLI
+
+After updating the CLI (`runway selfupdate`), run:
+
+```sh
+go test -tags compat -run TestCLICompat -v ./internal/runway/
+```
+
+It calls every read-only command the TUI uses against your logged-in account
+(first running app and first service) and fails on command or decode errors, or
+on fields our types expect that the CLI no longer sends. New CLI fields are
+logged. It prints field paths only, never values. CI skips it because it needs
+real credentials. If it passes, bump "Last checked against" above.
+
 The CLI is accessed through the `runway.Runner` / `CommandExecutor` interfaces in
 `internal/runway`, so tests use fakes instead of calling the real binary. The JSON
 fixtures in `internal/runway/types_test.go` mirror real CLI output. If the CLI changes

@@ -1,5 +1,10 @@
 version: "2"
 
+run:
+  # Also lint the live CLI compatibility test (see README).
+  build-tags:
+    - compat
+
 linters:
   # "standard" = errcheck, govet, ineffassign, staticcheck, unused
   default: standard
