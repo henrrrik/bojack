@@ -41,6 +41,7 @@ go run ./cmd/runway-tui
 | `enter`             | Select                       |
 | `tab` / `shift+tab` | Next / previous tab          |
 | `i`                 | Cycle stats interval (1h / 6h / 24h / 7d / 30d) |
+| `v`                 | DSN tab: reveal / hide passwords (hidden by default) |
 | `a` / `b` / `s`     | Logs: toggle app / build / system logs |
 | `t`                 | Logs: cycle time range (all / 1h / 6h / 24h / 7d) |
 | `l`                 | Logs: cycle line limit (100 / 500 / 1000) |

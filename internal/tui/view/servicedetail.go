@@ -27,6 +27,7 @@ type ServiceDetailModel struct {
 	name          string
 	activeTab     int
 	statsInterval string
+	revealSecrets bool
 	styles        DetailStyles
 	spinner       spinner.Model
 	width         int
@@ -116,6 +117,10 @@ func (m ServiceDetailModel) handleKey(k tea.KeyMsg) (ServiceDetailModel, tea.Cmd
 		m.activeTab = (m.activeTab + 1) % len(serviceTabs)
 	case "shift+tab":
 		m.activeTab = (m.activeTab - 1 + len(serviceTabs)) % len(serviceTabs)
+	case revealKey:
+		if m.activeTab == serviceDSNTab {
+			m.revealSecrets = !m.revealSecrets
+		}
 	case statsIntervalKey:
 		if m.activeTab == serviceStatsTab {
 			m.statsInterval = NextStatsInterval(m.statsInterval)
@@ -132,8 +137,11 @@ func (m ServiceDetailModel) View() string {
 	b.WriteString(m.renderTabs() + "\n\n")
 	b.WriteString(m.renderActiveTab())
 	help := []string{"tab: switch tab", "esc: back"}
-	if m.activeTab == serviceStatsTab {
+	switch m.activeTab {
+	case serviceStatsTab:
 		help = append([]string{"i: interval"}, help...)
+	case serviceDSNTab:
+		help = append([]string{revealHelp(m.revealSecrets)}, help...)
 	}
 	b.WriteString("\n" + renderHelp(m.styles.HelpBar, help...))
 	return b.String()
@@ -233,8 +241,17 @@ func (m ServiceDetailModel) renderDSNTab() string {
 	if len(m.dsn) == 0 {
 		return "No DSN available."
 	}
+	keys := make([]string, 0, len(m.dsn))
+	for k := range m.dsn {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
 	var b strings.Builder
-	for k, v := range m.dsn {
+	for _, k := range keys {
+		v := m.dsn[k]
+		if !m.revealSecrets {
+			v = maskSecrets(v)
+		}
 		b.WriteString(m.styles.Label.Render(k+":") + " " + m.styles.Value.Render(v) + "\n")
 	}
 	return b.String()
