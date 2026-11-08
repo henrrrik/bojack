@@ -119,3 +119,7 @@ its output format, update them first.
 The Release workflow runs the tests and then [GoReleaser](https://goreleaser.com),
 which builds the binaries (with the version set via `-X main.version`) and publishes a
 GitHub release whose notes are that version's `CHANGELOG.md` section.
+
+## License
+
+[MIT](LICENSE)
