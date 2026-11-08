@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
 
@@ -17,7 +19,9 @@ func NewTemplateListModel(styles DetailStyles, width, height int) ListModel[runw
 		{Title: "Latest", Width: 8},
 		{Title: "Min Plan", Width: 16},
 		{Title: "Description", Width: 50},
-	}, templateRow, styles, width, height)
+	}, templateRow, styles, width, height).WithSelect(func(t runway.Template) tea.Msg {
+		return msg.NavigateMsg{View: msg.ViewTemplateDetail, Param: t.Name}
+	})
 }
 
 func templateRow(t runway.Template) table.Row {

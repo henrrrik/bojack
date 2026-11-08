@@ -500,3 +500,21 @@ func TestAppOpenArgs(t *testing.T) {
 		t.Errorf("args = %q, want %q", got, expected)
 	}
 }
+
+func TestTemplateShow(t *testing.T) {
+	fake := newFake(map[string][]byte{"template show valkey -o json": []byte(
+		`{"name":"valkey","latest":"0.2.0","versions":["0.1.1","0.2.0"],"displayName":"Valkey","minPlan":"free-launch"}`)})
+	got, err := NewCLIRunner(fake).TemplateShow(context.Background(), "valkey")
+	if err != nil || got.Name != "valkey" || len(got.Versions) != 2 || got.MinPlan != "free-launch" {
+		t.Errorf("TemplateShow = %+v, %v", got, err)
+	}
+}
+
+func TestVolumeShow(t *testing.T) {
+	fake := newFake(map[string][]byte{"volume show data-1 -o json": []byte(
+		`{"name":"data-1","app":"db","mountpoint":"/data","size":5120,"size_extra":0,"replicas":[],"resizable":true}`)})
+	got, err := NewCLIRunner(fake).VolumeShow(context.Background(), "data-1")
+	if err != nil || got.Name != "data-1" || got.SizeMB != 5120 || !got.Resizable {
+		t.Errorf("VolumeShow = %+v, %v", got, err)
+	}
+}

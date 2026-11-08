@@ -24,6 +24,8 @@ const (
 	ViewRegistryList
 	ViewSSHKeyList
 	ViewAPIKeyList
+	ViewTemplateDetail
+	ViewVolumeDetail
 )
 
 // NavigateMsg requests a view transition.
@@ -119,6 +121,12 @@ type ServiceBackupsResultMsg struct {
 type ListResultMsg[T any] struct {
 	Items []T
 	Err   error
+}
+
+// ItemResultMsg carries one item fetched for an ItemModel[T].
+type ItemResultMsg[T any] struct {
+	Item *T
+	Err  error
 }
 
 // ActionKind identifies an action that changes something in Runway.

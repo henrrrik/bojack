@@ -29,12 +29,13 @@ type Model struct {
 	mainMenu      view.MainMenuModel
 	appDetail     view.AppDetailModel
 	serviceDetail view.ServiceDetailModel
-	// list is the current generic list view (see listViews).
-	list view.Viewer
+	// leaves holds the generic views (see genericViews) by ID, so a list
+	// keeps its state while one of its items is open.
+	leaves map[msg.ViewID]view.Viewer
 }
 
-// listViews describes the generic list views.
-var listViews = map[msg.ViewID]listEntry{
+// genericViews describes the views built from view.ListModel and view.ItemModel.
+var genericViews = map[msg.ViewID]viewEntry{
 	msg.ViewAppList:      listView(view.NewAppListModel, runway.Runner.AppList),
 	msg.ViewServiceList:  listView(view.NewServiceListModel, runway.Runner.ServiceList),
 	msg.ViewVolumeList:   listView(view.NewVolumeListModel, runway.Runner.VolumeList),
@@ -46,25 +47,46 @@ var listViews = map[msg.ViewID]listEntry{
 	msg.ViewRegistryList: listView(view.NewRegistryListModel, runway.Runner.RegistryList),
 	msg.ViewSSHKeyList:   listView(view.NewSSHKeyListModel, runway.Runner.SSHKeyList),
 	msg.ViewAPIKeyList:   listView(view.NewAPIKeyListModel, runway.Runner.APIKeyList),
+
+	msg.ViewTemplateDetail: itemView(view.NewTemplateDetailModel, runway.Runner.TemplateShow),
+	msg.ViewVolumeDetail:   itemView(view.NewVolumeDetailModel, runway.Runner.VolumeShow),
 }
 
-// listEntry builds a list view and, separately, the command that (re)fills
-// it, so a list can be refetched without being rebuilt.
-type listEntry struct {
-	build func(Model) view.Viewer
-	fetch func(Model) tea.Cmd
+// viewEntry builds a generic view and, separately, the command that
+// (re)fills it, so a view can be refetched without being rebuilt. param is
+// the view's navigation parameter, e.g. an item name.
+type viewEntry struct {
+	build func(m Model, param string) view.Viewer
+	fetch func(m Model, param string) tea.Cmd
 }
 
 // listView pairs a list view constructor with the Runner method that fills it.
 func listView[T any](
 	newModel func(view.DetailStyles, int, int) view.ListModel[T],
 	fetch func(runway.Runner, context.Context) ([]T, error),
-) listEntry {
-	return listEntry{
-		build: func(m Model) view.Viewer { return newModel(m.styles.DetailStyles(), m.width, m.height) },
-		fetch: func(m Model) tea.Cmd {
+) viewEntry {
+	return viewEntry{
+		build: func(m Model, _ string) view.Viewer { return newModel(m.styles.DetailStyles(), m.width, m.height) },
+		fetch: func(m Model, _ string) tea.Cmd {
 			r := m.runner
 			return view.FetchList(view.CmdContext(), func(ctx context.Context) ([]T, error) { return fetch(r, ctx) })
+		},
+	}
+}
+
+// itemView pairs an item view constructor with the Runner method that
+// fetches the item by name.
+func itemView[T any](
+	newModel func(string, view.DetailStyles, int, int) view.ItemModel[T],
+	fetch func(runway.Runner, context.Context, string) (*T, error),
+) viewEntry {
+	return viewEntry{
+		build: func(m Model, name string) view.Viewer {
+			return newModel(name, m.styles.DetailStyles(), m.width, m.height)
+		},
+		fetch: func(m Model, name string) tea.Cmd {
+			r := m.runner
+			return view.FetchItem(view.CmdContext(), func(ctx context.Context) (*T, error) { return fetch(r, ctx, name) })
 		},
 	}
 }
@@ -133,12 +155,24 @@ func (m Model) View() string {
 	}
 }
 
-// viewLeaf renders the current generic list view.
+// viewLeaf renders the current generic view.
 func (m Model) viewLeaf() string {
-	if _, ok := listViews[m.currentView]; ok && m.list != nil {
-		return m.list.View()
+	if v, ok := m.leaves[m.currentView]; ok {
+		return v.View()
 	}
 	return m.mainMenu.View()
+}
+
+// withLeaf returns m with the generic view for id set to v. It copies the
+// map so earlier copies of the model are unaffected.
+func (m Model) withLeaf(id msg.ViewID, v view.Viewer) Model {
+	leaves := make(map[msg.ViewID]view.Viewer, len(m.leaves)+1)
+	for k, l := range m.leaves {
+		leaves[k] = l
+	}
+	leaves[id] = v
+	m.leaves = leaves
+	return m
 }
 
 func (m Model) handleGlobalKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -166,10 +200,7 @@ func (m Model) handleGlobalKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 // viewClaimsKey reports whether the current view wants key before the global
 // bindings, e.g. while the user types a filter.
 func (m Model) viewClaimsKey(key string) bool {
-	if _, ok := listViews[m.currentView]; !ok {
-		return false
-	}
-	c, ok := m.list.(view.KeyClaimer)
+	c, ok := m.leaves[m.currentView].(view.KeyClaimer)
 	return ok && c.ClaimsKey(key)
 }
 
@@ -244,8 +275,8 @@ func (m Model) refetchCurrent() tea.Cmd {
 	case msg.ViewServiceDetail:
 		return view.FetchServiceDetail(ctx, m.runner, param, m.statsInterval)
 	}
-	if e, ok := listViews[m.currentView]; ok {
-		return e.fetch(m)
+	if e, ok := genericViews[m.currentView]; ok {
+		return e.fetch(m, param)
 	}
 	return nil
 }
@@ -277,9 +308,8 @@ func (m Model) handleBack() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) initView(v msg.ViewID, param string) (Model, tea.Cmd) {
-	if e, ok := listViews[v]; ok {
-		m.list = e.build(m)
-		return m, e.fetch(m)
+	if e, ok := genericViews[v]; ok {
+		return m.withLeaf(v, e.build(m, param)), e.fetch(m, param)
 	}
 	ctx := view.CmdContext()
 	switch v {
@@ -312,11 +342,12 @@ func (m Model) updateCurrentView(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateLeafView(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	if _, ok := listViews[m.currentView]; ok && m.list != nil {
-		m.list, cmd = m.list.Update(teaMsg)
+	v, ok := m.leaves[m.currentView]
+	if !ok {
+		return m, nil
 	}
-	return m, cmd
+	v, cmd := v.Update(teaMsg)
+	return m.withLeaf(m.currentView, v), cmd
 }
 
 func (m Model) propagateSize() tea.Cmd {

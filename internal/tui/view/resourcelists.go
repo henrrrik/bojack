@@ -58,14 +58,12 @@ func NewVolumeListModel(styles DetailStyles, width, height int) ListModel[runway
 		{Title: "Size", Width: 10},
 		{Title: "Extra", Width: 10},
 		{Title: "Replicas", Width: 8},
-	}, volumeRow, styles, width, height)
+	}, volumeRow, styles, width, height).WithSelect(func(v runway.Volume) tea.Msg {
+		return msg.NavigateMsg{View: msg.ViewVolumeDetail, Param: v.Name}
+	})
 }
 
 func volumeRow(v runway.Volume) table.Row {
-	extra := "-"
-	if v.SizeExtraMB > 0 {
-		extra = formatMB(strconv.Itoa(v.SizeExtraMB))
-	}
 	replicas := "-"
 	switch {
 	case v.IsReplica:
@@ -73,7 +71,7 @@ func volumeRow(v runway.Volume) table.Row {
 	case len(v.Replicas) > 0:
 		replicas = strconv.Itoa(len(v.Replicas))
 	}
-	return table.Row{v.Name, v.App, v.Mountpoint, formatMB(strconv.Itoa(v.SizeMB)), extra, replicas}
+	return table.Row{v.Name, v.App, v.Mountpoint, formatMB(strconv.Itoa(v.SizeMB)), extraMB(v.SizeExtraMB), replicas}
 }
 
 // NewDomainListModel lists root domains.

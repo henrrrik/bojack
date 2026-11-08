@@ -35,6 +35,16 @@ func (f *fakeStatsRunner) TemplateList(context.Context) ([]runway.Template, erro
 	return []runway.Template{{Name: "valkey"}}, nil
 }
 
+func (f *fakeStatsRunner) TemplateShow(_ context.Context, name string) (*runway.Template, error) {
+	f.calls = append(f.calls, "template "+name)
+	return &runway.Template{Name: name, Category: "cache"}, nil
+}
+
+func (f *fakeStatsRunner) VolumeShow(_ context.Context, name string) (*runway.Volume, error) {
+	f.calls = append(f.calls, "volume "+name)
+	return &runway.Volume{Name: name, Mountpoint: "/data"}, nil
+}
+
 func (f *fakeStatsRunner) ServiceBackupCreate(_ context.Context, name string) error {
 	f.calls = append(f.calls, "backup "+name)
 	return nil
@@ -270,7 +280,7 @@ func TestAllListViewsRegistered(t *testing.T) {
 		msg.ViewVolumeList, msg.ViewDomainList, msg.ViewPolicyList, msg.ViewRegionList, msg.ViewPlanList,
 		msg.ViewTemplateList, msg.ViewRegistryList, msg.ViewSSHKeyList, msg.ViewAPIKeyList,
 	} {
-		if _, ok := listViews[v]; !ok {
+		if _, ok := genericViews[v]; !ok {
 			t.Errorf("view %d not registered", v)
 		}
 	}
@@ -353,5 +363,45 @@ func TestFilterKeysReachListBeforeGlobalKeys(t *testing.T) {
 	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	if result.(Model).currentView != msg.ViewMainMenu {
 		t.Error("second esc should go back")
+	}
+}
+
+func TestTemplateDetailFromListAndBack(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewTemplateList})
+	result, _ = result.Update(cmd())
+	result, cmd = result.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	result, cmd = result.Update(cmd()) // NavigateMsg to the detail view
+	if m := result.(Model); m.currentView != msg.ViewTemplateDetail || m.currentParam() != "valkey" {
+		t.Fatalf("enter should open the template detail, view=%d param=%q", m.currentView, m.currentParam())
+	}
+	result, _ = result.Update(cmd())
+	if v := result.View(); !strings.Contains(v, "Template: valkey") || !strings.Contains(v, "cache") {
+		t.Errorf("detail view should show the template, got:\n%s", v)
+	}
+	if strings.Join(fake.calls, ",") != "templates,template valkey" {
+		t.Errorf("calls = %v", fake.calls)
+	}
+	result, _ = result.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if m := result.(Model); m.currentView != msg.ViewTemplateList || !strings.Contains(m.View(), "valkey") ||
+		strings.Contains(m.View(), "Template: valkey") {
+		t.Errorf("esc should return to the loaded list, view=%d:\n%s", m.currentView, m.View())
+	}
+}
+
+func TestVolumeDetailRefresh(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewVolumeDetail, Param: "data-1"})
+	result, _ = result.Update(cmd())
+	result, cmd = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	if cmd == nil {
+		t.Fatal("r should refetch the volume")
+	}
+	result, _ = result.Update(cmd())
+	if v := result.View(); !strings.Contains(v, "Volume: data-1") || !strings.Contains(v, "/data") {
+		t.Errorf("view = %q", v)
+	}
+	if strings.Join(fake.calls, ",") != "volume data-1,volume data-1" {
+		t.Errorf("calls = %v", fake.calls)
 	}
 }

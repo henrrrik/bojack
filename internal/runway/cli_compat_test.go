@@ -5,6 +5,7 @@ package runway
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -59,6 +60,20 @@ func TestCLICompat(t *testing.T) {
 		{"region ls", call(func() ([]Region, error) { return r.RegionList(ctx) })},
 		{"plan ls", call(func() ([]Plan, error) { return r.PlanList(ctx) })},
 		{"template ls", call(func() ([]Template, error) { return r.TemplateList(ctx) })},
+		{"template show", call(func() (*Template, error) {
+			ts, err := r.TemplateList(ctx)
+			if err != nil || len(ts) == 0 {
+				return nil, fmt.Errorf("need a template: %v", err)
+			}
+			return r.TemplateShow(ctx, ts[0].Name)
+		})},
+		{"volume show", call(func() (*Volume, error) {
+			vs, err := r.VolumeList(ctx)
+			if err != nil || len(vs) == 0 {
+				return nil, fmt.Errorf("need a volume: %v", err)
+			}
+			return r.VolumeShow(ctx, vs[0].Name)
+		})},
 		{"registry ls", call(func() ([]Registry, error) { return r.RegistryList(ctx) })},
 		{"key ls", call(func() ([]SSHKey, error) { return r.SSHKeyList(ctx) })},
 		{"api-key ls", call(func() ([]APIKey, error) { return r.APIKeyList(ctx) })},
