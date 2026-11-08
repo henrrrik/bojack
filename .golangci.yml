@@ -1,0 +1,19 @@
+version: "2"
+
+linters:
+  # "standard" = errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  enable:
+    - gocyclo
+  settings:
+    gocyclo:
+      # Report functions with cyclomatic complexity over 10
+      # (same threshold as the previous `gocyclo -over 10 .`).
+      min-complexity: 10
+
+formatters:
+  enable:
+    - gofmt
+  settings:
+    gofmt:
+      simplify: true

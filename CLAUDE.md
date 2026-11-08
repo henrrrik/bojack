@@ -1,8 +1,7 @@
 # Build & Test
 - `go test -v -race ./...` — run tests (matches CI)
-- `gofmt -s -w .` — run before committing
-- `go vet ./...` — run before committing
-- `gocyclo -over 10 .` — run before committing
+- `golangci-lint fmt` — run before committing (gofmt -s)
+- `golangci-lint run ./...` — run before committing (go vet, staticcheck, errcheck, gocyclo over 10, etc.; config in `.golangci.yml`)
 
 ## Workflow
 
