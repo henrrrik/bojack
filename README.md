@@ -2,8 +2,10 @@
 
 A terminal UI for browsing your [Runway](https://runway.horse) apps and services.
 
-It is a mostly read-only front end to the `runway` CLI (the only actions are restarting apps and services, creating service backups and re-checking domain verification, each behind a confirmation): every view runs a `runway … -o json`
-command and renders the result, so it sees exactly what the CLI sees.
+It is a front end to the `runway` CLI: every view runs a `runway … -o json`
+command and renders the result, so it sees exactly what the CLI sees. Actions
+that change something (restarts, backups, config changes, plan changes, volume
+resizes, domain re-checks) always ask you to confirm first.
 
 ## Features
 
@@ -21,16 +23,21 @@ command and renders the result, so it sees exactly what the CLI sees.
 
 ## Requirements
 
-- Go 1.26.8+
 - The [`runway` CLI](https://runway.horse) on your `PATH`, logged in (`runway login`).
   Last checked against runway CLI 1.49.0.
 
 ## Install / run
 
+Download a binary for your platform from the
+[releases page](https://github.com/henrrrik/runway-tui/releases), or build it
+with Go 1.26.8+:
+
 ```sh
 go install github.com/henrrrik/runway-tui/cmd/runway-tui@latest
 runway-tui
 ```
+
+`runway-tui --version` prints the version.
 
 Or from a checkout:
 
@@ -94,3 +101,13 @@ The CLI is accessed through the `runway.Runner` / `CommandExecutor` interfaces i
 `internal/runway`, so tests use fakes instead of calling the real binary. The JSON
 fixtures in `internal/runway/types_test.go` mirror real CLI output. If the CLI changes
 its output format, update them first.
+
+### Releasing
+
+1. Move the `[Unreleased]` notes in `CHANGELOG.md` under a new version heading and
+   merge that in a PR.
+2. Tag `main` and push the tag: `git tag v0.2.0 && git push origin v0.2.0`.
+
+The Release workflow runs the tests and then [GoReleaser](https://goreleaser.com),
+which builds the binaries (with the version set via `-X main.version`) and publishes a
+GitHub release whose notes are that version's `CHANGELOG.md` section.
