@@ -5,9 +5,50 @@ import (
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
 )
+
+// NewAppListModel lists apps; enter opens the app's detail view. Services
+// also appear in "app ls" (type "db") and open the service detail view.
+func NewAppListModel(helpBar lipgloss.Style, width, height int) ListModel[runway.AppListEntry] {
+	return NewListModel("apps", []table.Column{
+		{Title: "Name", Width: 20},
+		{Title: "Type", Width: 8},
+		{Title: "Plan", Width: 14},
+		{Title: "Region", Width: 14},
+		{Title: "Role", Width: 10},
+		{Title: "Status", Width: 10},
+	}, appRow, helpBar, width, height).WithSelect(func(a runway.AppListEntry) tea.Msg {
+		target := msg.ViewAppDetail
+		if a.App.Type == "db" {
+			target = msg.ViewServiceDetail
+		}
+		return msg.NavigateMsg{View: target, Param: a.App.ID}
+	})
+}
+
+func appRow(a runway.AppListEntry) table.Row {
+	return table.Row{a.App.ID, a.App.Type, a.App.Plan, a.App.Region, a.App.Meta.Role, orDash(a.Status.Status)}
+}
+
+// NewServiceListModel lists services; enter opens the service detail view.
+func NewServiceListModel(helpBar lipgloss.Style, width, height int) ListModel[runway.Service] {
+	return NewListModel("services", []table.Column{
+		{Title: "Name", Width: 20},
+		{Title: "Type", Width: 12},
+		{Title: "Plan", Width: 14},
+		{Title: "Backup", Width: 8},
+	}, serviceRow, helpBar, width, height).WithSelect(func(s runway.Service) tea.Msg {
+		return msg.NavigateMsg{View: msg.ViewServiceDetail, Param: s.Name}
+	})
+}
+
+func serviceRow(s runway.Service) table.Row {
+	return table.Row{s.Name, s.Type, s.Plan, fmt.Sprintf("%v", s.HasBackup)}
+}
 
 // NewVolumeListModel lists volumes.
 func NewVolumeListModel(helpBar lipgloss.Style, width, height int) ListModel[runway.Volume] {

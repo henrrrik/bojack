@@ -11,7 +11,7 @@ import (
 )
 
 func TestServiceListLoading(t *testing.T) {
-	m := NewServiceListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewServiceListModel(lipgloss.NewStyle(), 80, 24)
 	v := m.View()
 	if !strings.Contains(v, "Fetching services") {
 		t.Error("loading view should say 'Fetching services'")
@@ -19,11 +19,11 @@ func TestServiceListLoading(t *testing.T) {
 }
 
 func TestServiceListReceivesData(t *testing.T) {
-	m := NewServiceListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewServiceListModel(lipgloss.NewStyle(), 80, 24)
 	services := []runway.Service{
 		{Name: "my-db", Type: "postgres", Plan: "standard-1", HasBackup: true},
 	}
-	m, _ = m.Update(msg.ServiceListResultMsg{Services: services})
+	m, _ = m.Update(msg.ListResultMsg[runway.Service]{Items: services})
 	v := m.View()
 	if !strings.Contains(v, "my-db") {
 		t.Errorf("view should contain service name, got %q", v)
@@ -31,11 +31,11 @@ func TestServiceListReceivesData(t *testing.T) {
 }
 
 func TestServiceListSelectEmitsNavigate(t *testing.T) {
-	m := NewServiceListModel(lipgloss.NewStyle(), 80, 24)
+	var m Viewer = NewServiceListModel(lipgloss.NewStyle(), 80, 24)
 	services := []runway.Service{
 		{Name: "my-db", Type: "postgres", Plan: "s-1"},
 	}
-	m, _ = m.Update(msg.ServiceListResultMsg{Services: services})
+	m, _ = m.Update(msg.ListResultMsg[runway.Service]{Items: services})
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("expected command on enter")
@@ -54,8 +54,8 @@ func TestServiceListSelectEmitsNavigate(t *testing.T) {
 }
 
 func TestServiceListEmpty(t *testing.T) {
-	m := NewServiceListModel(lipgloss.NewStyle(), 80, 24)
-	m, _ = m.Update(msg.ServiceListResultMsg{Services: []runway.Service{}})
+	var m Viewer = NewServiceListModel(lipgloss.NewStyle(), 80, 24)
+	m, _ = m.Update(msg.ListResultMsg[runway.Service]{Items: []runway.Service{}})
 	v := m.View()
 	if !strings.Contains(v, "No services found") {
 		t.Error("should show empty message")

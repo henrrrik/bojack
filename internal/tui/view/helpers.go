@@ -17,14 +17,6 @@ func CmdContext() context.Context {
 	return context.Background()
 }
 
-// FetchAppList returns a command that fetches the app list.
-func FetchAppList(ctx context.Context, r runway.Runner) tea.Cmd {
-	return func() tea.Msg {
-		apps, err := r.AppList(ctx)
-		return msg.AppListResultMsg{Apps: apps, Err: err}
-	}
-}
-
 // FetchAppDetail returns a batch command that fetches all app detail data,
 // with stats over interval and logs selected by logOpts.
 func FetchAppDetail(ctx context.Context, r runway.Runner, name, interval string, logOpts runway.LogOptions) tea.Cmd {
@@ -52,14 +44,6 @@ func FetchAppDetail(ctx context.Context, r runway.Runner, name, interval string,
 		},
 		FetchAppLogs(ctx, r, name, logOpts),
 	)
-}
-
-// FetchServiceList returns a command that fetches the service list.
-func FetchServiceList(ctx context.Context, r runway.Runner) tea.Cmd {
-	return func() tea.Msg {
-		services, err := r.ServiceList(ctx)
-		return msg.ServiceListResultMsg{Services: services, Err: err}
-	}
 }
 
 // FetchServiceDetail returns a batch command for service detail data,

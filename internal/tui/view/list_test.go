@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/henrrrik/runway-tui/internal/msg"
 	"github.com/henrrrik/runway-tui/internal/runway"
@@ -100,5 +101,39 @@ func TestAPIKeyRow(t *testing.T) {
 	want := table.Row{"ci", "ACTIVE", "2026-09-01", "2027-09-01", "-"}
 	if strings.Join(row, "|") != strings.Join(want, "|") {
 		t.Errorf("row = %v, want %v", row, want)
+	}
+}
+
+func selectableThings() Viewer {
+	m := NewListModel("things", []table.Column{{Title: "Name", Width: 10}},
+		func(t thing) table.Row { return table.Row{t.name} }, lipgloss.NewStyle(), 80, 24).
+		WithSelect(func(t thing) tea.Msg { return msg.NavigateMsg{View: msg.ViewAppDetail, Param: t.name} })
+	return update(m, msg.ListResultMsg[thing]{Items: []thing{{"alpha"}, {"beta"}}})
+}
+
+func TestListSelectUsesCursorItem(t *testing.T) {
+	v := update(selectableThings(), tea.KeyMsg{Type: tea.KeyDown})
+	_, cmd := v.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("expected a command on enter")
+	}
+	if nav, ok := cmd().(msg.NavigateMsg); !ok || nav.Param != "beta" {
+		t.Errorf("cmd() = %#v, want navigate to beta", cmd())
+	}
+}
+
+func TestListWithoutSelectIgnoresEnter(t *testing.T) {
+	v := update(newThingList(), msg.ListResultMsg[thing]{Items: []thing{{"alpha"}}})
+	if _, cmd := v.Update(tea.KeyMsg{Type: tea.KeyEnter}); cmd != nil {
+		t.Errorf("enter without a select handler should do nothing, got %#v", cmd())
+	}
+	if strings.Contains(v.View(), "enter: details") {
+		t.Error("help should not offer enter without a select handler")
+	}
+}
+
+func TestListSelectHelp(t *testing.T) {
+	if !strings.Contains(selectableThings().View(), "enter: details") {
+		t.Error("help should offer enter when selectable")
 	}
 }
