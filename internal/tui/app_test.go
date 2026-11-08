@@ -45,6 +45,36 @@ func (f *fakeStatsRunner) VolumeShow(_ context.Context, name string) (*runway.Vo
 	return &runway.Volume{Name: name, Mountpoint: "/data"}, nil
 }
 
+func (f *fakeStatsRunner) AppConfigSet(_ context.Context, app, assignment string) error {
+	f.calls = append(f.calls, "app config set "+app+" "+assignment)
+	return nil
+}
+
+func (f *fakeStatsRunner) AppConfigRm(_ context.Context, app, key string) error {
+	f.calls = append(f.calls, "app config rm "+app+" "+key)
+	return nil
+}
+
+func (f *fakeStatsRunner) ServiceConfigSet(_ context.Context, name, assignment string) error {
+	f.calls = append(f.calls, "service config set "+name+" "+assignment)
+	return nil
+}
+
+func (f *fakeStatsRunner) ServiceConfigRm(_ context.Context, name, key string) error {
+	f.calls = append(f.calls, "service config rm "+name+" "+key)
+	return nil
+}
+
+func (f *fakeStatsRunner) AppPlanSet(_ context.Context, app, plan string) error {
+	f.calls = append(f.calls, "plan "+app+" "+plan)
+	return nil
+}
+
+func (f *fakeStatsRunner) VolumeSet(_ context.Context, name string, sizeMiB int) error {
+	f.calls = append(f.calls, fmt.Sprintf("volume set %s %d", name, sizeMiB))
+	return nil
+}
+
 func (f *fakeStatsRunner) ServiceBackupCreate(_ context.Context, name string) error {
 	f.calls = append(f.calls, "backup "+name)
 	return nil
@@ -402,6 +432,79 @@ func TestVolumeDetailRefresh(t *testing.T) {
 		t.Errorf("view = %q", v)
 	}
 	if strings.Join(fake.calls, ",") != "volume data-1,volume data-1" {
+		t.Errorf("calls = %v", fake.calls)
+	}
+}
+
+func TestInputActionRequestsCallRunner(t *testing.T) {
+	for _, c := range []struct {
+		req  msg.ActionRequestMsg
+		want string
+	}{
+		{msg.ActionRequestMsg{Kind: msg.ActionSetAppConfig, Target: "x", Arg: "A=1"}, "app config set x A=1"},
+		{msg.ActionRequestMsg{Kind: msg.ActionRemoveAppConfig, Target: "x", Arg: "A"}, "app config rm x A"},
+		{msg.ActionRequestMsg{Kind: msg.ActionSetServiceConfig, Target: "x", Arg: "A=1"}, "service config set x A=1"},
+		{msg.ActionRequestMsg{Kind: msg.ActionRemoveServiceConfig, Target: "x", Arg: "A"}, "service config rm x A"},
+		{msg.ActionRequestMsg{Kind: msg.ActionSetAppPlan, Target: "x", Arg: "starter"}, "plan x starter"},
+		{msg.ActionRequestMsg{Kind: msg.ActionResizeVolume, Target: "x", Arg: "6144"}, "volume set x 6144"},
+	} {
+		fake := &fakeStatsRunner{}
+		_, cmd := NewModel(fake).Update(c.req)
+		res, ok := cmd().(msg.ActionResultMsg)
+		if !ok || res.Kind != c.req.Kind || res.Target != "x" || res.Err != nil {
+			t.Errorf("%+v: cmd() = %#v", c.req, res)
+		}
+		if len(fake.calls) != 1 || fake.calls[0] != c.want {
+			t.Errorf("%+v: calls = %v, want [%s]", c.req, fake.calls, c.want)
+		}
+	}
+}
+
+func TestResizeRejectsNonNumericArg(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	_, cmd := NewModel(fake).Update(msg.ActionRequestMsg{Kind: msg.ActionResizeVolume, Target: "x", Arg: "big"})
+	if res := cmd().(msg.ActionResultMsg); res.Err == nil || len(fake.calls) != 0 {
+		t.Errorf("a non-numeric size should fail without calling the CLI, res=%+v calls=%v", res, fake.calls)
+	}
+}
+
+func TestDetailInputGetsGlobalKeys(t *testing.T) {
+	result, _ := NewModel(&fakeStatsRunner{}).handleNavigate(msg.NavigateMsg{View: msg.ViewAppDetail, Param: "terry"})
+	result = pressKeys(result, "P", "q", "r", "o")
+	m := result.(Model)
+	if m.currentView != msg.ViewAppDetail || !strings.Contains(m.View(), "qro") {
+		t.Fatalf("q, r and o should type into the input, view=%d:\n%s", m.currentView, m.View())
+	}
+	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if m = result.(Model); m.currentView != msg.ViewAppDetail || strings.Contains(m.View(), "qro") {
+		t.Fatalf("esc should cancel the input and stay, view=%d", m.currentView)
+	}
+	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if result.(Model).currentView != msg.ViewMainMenu {
+		t.Error("second esc should go back")
+	}
+}
+
+func TestVolumeResizeRefetches(t *testing.T) {
+	fake := &fakeStatsRunner{}
+	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewVolumeDetail, Param: "data-1"})
+	result, _ = result.Update(msg.ItemResultMsg[runway.Volume]{Item: &runway.Volume{Name: "data-1", SizeMB: 100, Resizable: true}})
+	_ = cmd
+	result = pressKeys(result, "S", "200")
+	result, _ = result.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	result, cmd = result.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")})
+	result, cmd = result.Update(cmd())
+	result, cmd = result.Update(cmd()) // ActionResultMsg
+	if cmd == nil {
+		t.Fatal("a successful resize should refetch the volume")
+	}
+	if _, ok := cmd().(msg.ItemResultMsg[runway.Volume]); !ok {
+		t.Errorf("refetch should reload the volume")
+	}
+	if !strings.Contains(result.View(), "Resized data-1") {
+		t.Errorf("view:\n%s", result.View())
+	}
+	if strings.Join(fake.calls, ",") != "volume set data-1 200,volume data-1" {
 		t.Errorf("calls = %v", fake.calls)
 	}
 }

@@ -30,6 +30,12 @@ type Runner interface {
 	ServiceRestart(ctx context.Context, name string) error
 	ServiceBackupCreate(ctx context.Context, name string) error
 	DomainVerify(ctx context.Context, domain string) error
+	AppConfigSet(ctx context.Context, appName, assignment string) error
+	AppConfigRm(ctx context.Context, appName, key string) error
+	ServiceConfigSet(ctx context.Context, name, assignment string) error
+	ServiceConfigRm(ctx context.Context, name, key string) error
+	AppPlanSet(ctx context.Context, appName, plan string) error
+	VolumeSet(ctx context.Context, name string, sizeMiB int) error
 	ServiceList(ctx context.Context) ([]Service, error)
 	ServiceShow(ctx context.Context, name string) (*Service, error)
 	ServiceDSN(ctx context.Context, name string) (ServiceDSN, error)
@@ -220,6 +226,42 @@ func (r *CLIRunner) ServiceBackupCreate(ctx context.Context, name string) error 
 // DomainVerify re-runs the verification check of a root domain.
 func (r *CLIRunner) DomainVerify(ctx context.Context, domain string) error {
 	_, err := r.exec.Execute(ctx, "domain", "verify", domain, "-y")
+	return err
+}
+
+// AppConfigSet sets one config value; assignment is KEY=value.
+func (r *CLIRunner) AppConfigSet(ctx context.Context, appName, assignment string) error {
+	_, err := r.exec.Execute(ctx, "app", "config", "set", "-a", appName, assignment, "-y")
+	return err
+}
+
+// AppConfigRm removes one config value.
+func (r *CLIRunner) AppConfigRm(ctx context.Context, appName, key string) error {
+	_, err := r.exec.Execute(ctx, "app", "config", "rm", "-a", appName, key, "-y")
+	return err
+}
+
+// ServiceConfigSet sets one service config value; assignment is KEY=value.
+func (r *CLIRunner) ServiceConfigSet(ctx context.Context, name, assignment string) error {
+	_, err := r.exec.Execute(ctx, "service", "config", "set", name, assignment, "-y")
+	return err
+}
+
+// ServiceConfigRm removes one service config value.
+func (r *CLIRunner) ServiceConfigRm(ctx context.Context, name, key string) error {
+	_, err := r.exec.Execute(ctx, "service", "config", "rm", name, key, "-y")
+	return err
+}
+
+// AppPlanSet moves an app to another plan.
+func (r *CLIRunner) AppPlanSet(ctx context.Context, appName, plan string) error {
+	_, err := r.exec.Execute(ctx, "app", "plan", "set", "-a", appName, "-p", plan, "-y")
+	return err
+}
+
+// VolumeSet grows a volume to sizeMiB. Volumes cannot shrink.
+func (r *CLIRunner) VolumeSet(ctx context.Context, name string, sizeMiB int) error {
+	_, err := r.exec.Execute(ctx, "volume", "set", name, strconv.Itoa(sizeMiB), "-y")
 	return err
 }
 

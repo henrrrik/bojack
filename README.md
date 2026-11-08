@@ -54,6 +54,9 @@ go run ./cmd/runway-tui
 | `R`                 | Restart app / service (asks to confirm with `y`) |
 | `B`                 | Service: create a backup (asks to confirm) |
 | `V`                 | Domains list: re-check verification of the selected domain (asks to confirm) |
+| `S` / `D`           | App / service Config tab: set `KEY=value` / remove a key (asks to confirm; secret values are masked as you type) |
+| `P`                 | App Info tab: move the app to another plan (asks to confirm) |
+| `S`                 | Volume details: grow the volume to a new size in MiB (only for resizable volumes; asks to confirm) |
 | `esc`               | Back                         |
 | `q`, `ctrl+c`       | Quit                         |
 

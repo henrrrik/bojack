@@ -137,13 +137,21 @@ const (
 	ActionRestartService
 	ActionCreateBackup
 	ActionVerifyDomain
+	ActionSetAppConfig
+	ActionRemoveAppConfig
+	ActionSetServiceConfig
+	ActionRemoveServiceConfig
+	ActionSetAppPlan
+	ActionResizeVolume
 )
 
 // ActionRequestMsg asks the root model to run an action on a target (an app,
-// service or domain name).
+// service, domain or volume name). Arg is the value the user typed for
+// actions that take one, e.g. KEY=value or a plan name.
 type ActionRequestMsg struct {
 	Kind   ActionKind
 	Target string
+	Arg    string
 }
 
 // ActionResultMsg reports the outcome of an action.

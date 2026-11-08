@@ -7,7 +7,9 @@ import (
 	"github.com/henrrrik/runway-tui/internal/msg"
 )
 
-// actionSpec describes an action a view offers. Texts take the target name.
+// actionSpec describes an action a view offers. Its texts are format strings
+// given the target name and, for actions with input, the checked value as
+// shown to the user (use %[1]s and %[2]s).
 type actionSpec struct {
 	kind     msg.ActionKind
 	key      string // shift+letter, since lowercase keys are taken
@@ -16,66 +18,131 @@ type actionSpec struct {
 	running  string
 	done     string
 	failed   string
+	// input, if set, is the label of a value the user types before
+	// confirming.
+	input string
+	// check validates the typed value and returns how to show it in the
+	// texts, e.g. only the key of KEY=value.
+	check func(string) (string, error)
+	// echo, if set, renders the value while it is typed, e.g. masked.
+	echo func(string) string
 }
 
 var (
-	restartAppAction = actionSpec{msg.ActionRestartApp, "R", "R: restart",
-		"Restart app %s?", "Restarting %s…", "Restarted %s.", "Restart failed"}
-	restartServiceAction = actionSpec{msg.ActionRestartService, "R", "R: restart",
-		"Restart service %s?", "Restarting %s…", "Restarted %s.", "Restart failed"}
-	createBackupAction = actionSpec{msg.ActionCreateBackup, "B", "B: backup",
-		"Create a backup of %s?", "Requesting backup of %s…", "Backup of %s requested.", "Backup failed"}
-	verifyDomainAction = actionSpec{msg.ActionVerifyDomain, "V", "V: verify",
-		"Re-check verification of %s?", "Checking %s…", "Verification check for %s done.", "Verification failed"}
+	restartAppAction = actionSpec{kind: msg.ActionRestartApp, key: "R", help: "R: restart",
+		question: "Restart app %s?", running: "Restarting %s…", done: "Restarted %s.", failed: "Restart failed"}
+	restartServiceAction = actionSpec{kind: msg.ActionRestartService, key: "R", help: "R: restart",
+		question: "Restart service %s?", running: "Restarting %s…", done: "Restarted %s.", failed: "Restart failed"}
+	createBackupAction = actionSpec{kind: msg.ActionCreateBackup, key: "B", help: "B: backup",
+		question: "Create a backup of %s?", running: "Requesting backup of %s…", done: "Backup of %s requested.",
+		failed: "Backup failed"}
+	verifyDomainAction = actionSpec{kind: msg.ActionVerifyDomain, key: "V", help: "V: verify",
+		question: "Re-check verification of %s?", running: "Checking %s…", done: "Verification check for %s done.",
+		failed: "Verification failed"}
 )
 
 type actionState int
 
 const (
 	actionIdle actionState = iota
+	actionInput
 	actionConfirming
 	actionRunning
 	actionDone
 	actionFailed
 )
 
-// actionPrompt is the confirm-then-run flow for a view's actions. Only "y"
-// confirms; any other key cancels. One action runs at a time.
+// actionPrompt is the (input-then-)confirm-then-run flow for a view's
+// actions. Only "y" confirms; any other key cancels. One action runs at a
+// time.
 type actionPrompt struct {
-	specs  []actionSpec
-	active actionSpec
-	target string
-	state  actionState
-	err    error
+	specs    []actionSpec
+	active   actionSpec
+	target   string
+	input    string // the value being typed, or the raw value once checked
+	shown    string // the checked value as shown in texts
+	inputErr error
+	state    actionState
+	err      error
 }
 
 func newActionPrompt(specs ...actionSpec) actionPrompt {
 	return actionPrompt{specs: specs}
 }
 
-// handleKey reports whether it consumed the key. While confirming it
-// consumes every key. target is what the action would apply to; "" (e.g. an
-// empty list) disables starting one.
-func (p actionPrompt) handleKey(k, target string) (actionPrompt, tea.Cmd, bool) {
-	if p.state == actionConfirming {
-		if k != "y" {
+// claimsKeys reports whether the prompt needs every key: while typing a
+// value or confirming.
+func (p actionPrompt) claimsKeys() bool {
+	return p.state == actionInput || p.state == actionConfirming
+}
+
+// handleKey reports whether it consumed the key. While typing or confirming
+// it consumes every key. target is what the action would apply to; ""
+// (e.g. an empty list) disables starting one. extra are actions offered in
+// addition to the prompt's own, e.g. for the active tab.
+func (p actionPrompt) handleKey(km tea.KeyMsg, target string, extra ...actionSpec) (actionPrompt, tea.Cmd, bool) {
+	switch p.state {
+	case actionInput:
+		return p.inputKey(km), nil, true
+	case actionConfirming:
+		if km.String() != "y" {
 			p.state = actionIdle
 			return p, nil, true
 		}
 		p.state = actionRunning
-		req := msg.ActionRequestMsg{Kind: p.active.kind, Target: p.target}
+		req := msg.ActionRequestMsg{Kind: p.active.kind, Target: p.target, Arg: p.input}
 		return p, func() tea.Msg { return req }, true
-	}
-	if p.state == actionRunning || target == "" {
+	case actionRunning:
 		return p, nil, false
 	}
-	for _, s := range p.specs {
-		if s.key == k {
-			p.active, p.target, p.state = s, target, actionConfirming
-			return p, nil, true
+	if target == "" {
+		return p, nil, false
+	}
+	for _, s := range append(p.specs[:len(p.specs):len(p.specs)], extra...) {
+		if s.key == km.String() {
+			return p.start(s, target), nil, true
 		}
 	}
 	return p, nil, false
+}
+
+func (p actionPrompt) start(s actionSpec, target string) actionPrompt {
+	p.active, p.target, p.input, p.shown, p.inputErr = s, target, "", "", nil
+	p.state = actionConfirming
+	if s.input != "" {
+		p.state = actionInput
+	}
+	return p
+}
+
+// inputKey edits the typed value; enter checks it and moves on to confirming.
+func (p actionPrompt) inputKey(km tea.KeyMsg) actionPrompt {
+	switch km.Type {
+	case tea.KeyEsc:
+		p.state = actionIdle
+	case tea.KeyEnter:
+		return p.submit()
+	case tea.KeyBackspace:
+		if r := []rune(p.input); len(r) > 0 {
+			p.input = string(r[:len(r)-1])
+		}
+	case tea.KeyRunes, tea.KeySpace:
+		p.input += string(km.Runes)
+	}
+	return p
+}
+
+func (p actionPrompt) submit() actionPrompt {
+	shown, err := p.input, error(nil)
+	if p.active.check != nil {
+		shown, err = p.active.check(p.input)
+	}
+	if err != nil {
+		p.inputErr = err
+		return p
+	}
+	p.shown, p.inputErr, p.state = shown, nil, actionConfirming
+	return p
 }
 
 // apply records the result of the running action.
@@ -90,28 +157,51 @@ func (p actionPrompt) apply(r msg.ActionResultMsg) actionPrompt {
 	return p
 }
 
-// help lists the action keys.
-func (p actionPrompt) help() []string {
-	h := make([]string, len(p.specs))
-	for i, s := range p.specs {
-		h[i] = s.help
+// help lists the action keys, including extra ones.
+func (p actionPrompt) help(extra ...actionSpec) []string {
+	var h []string
+	for _, s := range append(p.specs[:len(p.specs):len(p.specs)], extra...) {
+		h = append(h, s.help)
 	}
 	return h
+}
+
+// text formats one of the active action's texts.
+func (p actionPrompt) text(format string) string {
+	if p.active.input == "" {
+		return fmt.Sprintf(format, p.target)
+	}
+	return fmt.Sprintf(format, p.target, p.shown)
 }
 
 // status renders the prompt line, or "" when there is nothing to show.
 func (p actionPrompt) status(styles DetailStyles) string {
 	switch p.state {
+	case actionInput:
+		return p.inputStatus(styles)
 	case actionConfirming:
-		return styles.StatusWarn.Render(fmt.Sprintf(p.active.question, p.target) + " (y/N)")
+		return styles.StatusWarn.Render(p.text(p.active.question) + " (y/N)")
 	case actionRunning:
-		return styles.Value.Render(fmt.Sprintf(p.active.running, p.target))
+		return styles.Value.Render(p.text(p.active.running))
 	case actionDone:
-		return styles.StatusUp.Render(fmt.Sprintf(p.active.done, p.target))
+		return styles.StatusUp.Render(p.text(p.active.done))
 	case actionFailed:
 		return styles.Error.Render(p.active.failed + ": " + p.err.Error())
 	}
 	return ""
+}
+
+func (p actionPrompt) inputStatus(styles DetailStyles) string {
+	typed := p.input
+	if p.active.echo != nil {
+		typed = p.active.echo(typed)
+	}
+	s := styles.StatusWarn.Render(p.active.input+": ") + styles.Value.Render(typed+"█") +
+		"  " + styles.HelpBar.Render("enter: continue | esc: cancel")
+	if p.inputErr != nil {
+		s += "\n" + styles.Error.Render(p.inputErr.Error())
+	}
+	return s
 }
 
 // withStatus appends the status line, if any, to a view body.

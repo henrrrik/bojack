@@ -83,7 +83,7 @@ func (m ListModel[T]) handleKey(km tea.KeyMsg) (ListModel[T], tea.Cmd, bool) {
 	if m.filter != "" && k == "esc" {
 		return m.setFilter(""), nil, true
 	}
-	if p, cmd, ok := m.actions.handleKey(k, m.selectedTarget()); ok {
+	if p, cmd, ok := m.actions.handleKey(km, m.selectedTarget()); ok {
 		m.actions = p
 		return m, cmd, true
 	}

@@ -518,3 +518,27 @@ func TestVolumeShow(t *testing.T) {
 		t.Errorf("VolumeShow = %+v, %v", got, err)
 	}
 }
+
+func TestInputActions(t *testing.T) {
+	fake := newFake(map[string][]byte{
+		"app config set -a terry FOO=bar -y":  nil,
+		"app config rm -a terry FOO -y":       nil,
+		"service config set db FOO=bar -y":    nil,
+		"service config rm db FOO -y":         nil,
+		"app plan set -a terry -p starter -y": nil,
+		"volume set data-1 6144 -y":           nil,
+	})
+	r, ctx := NewCLIRunner(fake), context.Background()
+	for name, err := range map[string]error{
+		"AppConfigSet":     r.AppConfigSet(ctx, "terry", "FOO=bar"),
+		"AppConfigRm":      r.AppConfigRm(ctx, "terry", "FOO"),
+		"ServiceConfigSet": r.ServiceConfigSet(ctx, "db", "FOO=bar"),
+		"ServiceConfigRm":  r.ServiceConfigRm(ctx, "db", "FOO"),
+		"AppPlanSet":       r.AppPlanSet(ctx, "terry", "starter"),
+		"VolumeSet":        r.VolumeSet(ctx, "data-1", 6144),
+	} {
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
