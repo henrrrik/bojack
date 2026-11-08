@@ -3,7 +3,7 @@ package msg
 import (
 	"encoding/json"
 
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 // ViewID identifies which view is active.

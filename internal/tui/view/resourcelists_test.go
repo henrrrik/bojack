@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"charm.land/bubbles/v2/table"
-	"github.com/henrrrik/runway-tui/internal/msg"
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/msg"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 func assertRow(t *testing.T, got, want table.Row) {

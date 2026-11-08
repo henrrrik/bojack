@@ -2,7 +2,7 @@ package tui
 
 import (
 	"charm.land/lipgloss/v2"
-	"github.com/henrrrik/runway-tui/internal/tui/view"
+	"github.com/henrrrik/bojack/internal/tui/view"
 )
 
 // Styles holds shared lipgloss styles.

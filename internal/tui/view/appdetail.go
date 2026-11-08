@@ -6,8 +6,8 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
-	"github.com/henrrrik/runway-tui/internal/msg"
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/msg"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 var appTabs = []string{"Info", "Processes", "Stats", "Config", "Domains", "Sharing", "Logs"}

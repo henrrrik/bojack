@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 // NewTemplateDetailModel shows one app template.

@@ -1,4 +1,4 @@
-module github.com/henrrrik/runway-tui
+module github.com/henrrrik/bojack
 
 go 1.26.8
 

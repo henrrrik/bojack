@@ -5,8 +5,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/henrrrik/runway-tui/internal/msg"
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/msg"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 // DefaultLogOptions shows all log types over the full retention period.

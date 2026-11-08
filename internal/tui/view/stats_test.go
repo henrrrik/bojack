@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 // intervalLineRE matches the stats header showing the default interval.

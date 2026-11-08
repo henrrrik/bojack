@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/henrrrik/runway-tui/internal/msg"
+	"github.com/henrrrik/bojack/internal/msg"
 )
 
 func TestRenderBackupsEmpty(t *testing.T) {

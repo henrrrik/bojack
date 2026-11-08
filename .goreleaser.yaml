@@ -5,8 +5,8 @@ before:
     - go mod tidy
 
 builds:
-  - main: ./cmd/runway-tui
-    binary: runway-tui
+  - main: ./cmd/bojack
+    binary: bojack
     env:
       - CGO_ENABLED=0
     goos: [linux, darwin, windows]

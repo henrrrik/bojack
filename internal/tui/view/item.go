@@ -6,7 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
-	"github.com/henrrrik/runway-tui/internal/msg"
+	"github.com/henrrrik/bojack/internal/msg"
 )
 
 // field is one label/value row of an item view.

@@ -112,7 +112,7 @@ func checkSchema(t *testing.T, typ reflect.Type, out []byte) {
 		t.Errorf("field %s is expected by our types but missing from CLI output", p)
 	}
 	for _, p := range d.Unknown {
-		t.Logf("new field %s (not used by runway-tui)", p)
+		t.Logf("new field %s (not used by bojack)", p)
 	}
 }
 

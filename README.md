@@ -1,4 +1,4 @@
-# runway-tui
+# bojack
 
 A terminal UI for browsing your [Runway](https://runway.horse) apps and services.
 
@@ -31,20 +31,20 @@ resizes, domain re-checks) always ask you to confirm first.
 ## Install / run
 
 Download a binary for your platform from the
-[releases page](https://github.com/henrrrik/runway-tui/releases), or build it
+[releases page](https://github.com/henrrrik/bojack/releases), or build it
 with Go 1.26.8+:
 
 ```sh
-go install github.com/henrrrik/runway-tui/cmd/runway-tui@latest
-runway-tui
+go install github.com/henrrrik/bojack/cmd/bojack@latest
+bojack
 ```
 
-`runway-tui --version` prints the version.
+`bojack --version` prints the version.
 
 Or from a checkout:
 
 ```sh
-go run ./cmd/runway-tui
+go run ./cmd/bojack
 ```
 
 ## Keys

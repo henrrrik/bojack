@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/henrrrik/runway-tui/internal/msg"
+	"github.com/henrrrik/bojack/internal/msg"
 )
 
 // actionSpec describes an action a view offers. Its texts are format strings

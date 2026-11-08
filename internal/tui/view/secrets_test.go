@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/henrrrik/runway-tui/internal/msg"
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/msg"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 func TestMaskSecrets(t *testing.T) {

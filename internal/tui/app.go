@@ -7,9 +7,9 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
-	"github.com/henrrrik/runway-tui/internal/msg"
-	"github.com/henrrrik/runway-tui/internal/runway"
-	"github.com/henrrrik/runway-tui/internal/tui/view"
+	"github.com/henrrrik/bojack/internal/msg"
+	"github.com/henrrrik/bojack/internal/runway"
+	"github.com/henrrrik/bojack/internal/tui/view"
 )
 
 // Model is the root bubbletea model.

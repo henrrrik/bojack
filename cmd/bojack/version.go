@@ -29,7 +29,7 @@ type options struct {
 // parseArgs parses the command-line flags (without the program name).
 func parseArgs(args []string) (options, error) {
 	var o options
-	fs := flag.NewFlagSet("runway-tui", flag.ContinueOnError)
+	fs := flag.NewFlagSet("bojack", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	fs.BoolVar(&o.version, "version", false, "print the version and exit")
 	return o, fs.Parse(args)

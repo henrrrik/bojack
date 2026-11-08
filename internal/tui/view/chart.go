@@ -8,7 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/NimbleMarkets/ntcharts/v2/linechart/timeserieslinechart"
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 // Data set names; ntcharts draws them in sorted order, so the series is
