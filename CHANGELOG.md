@@ -6,6 +6,8 @@ All notable changes to bojack. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-08
+
 ### Changed
 
 - The main menu and the terminal title say "Bojack - Runway Manager".
@@ -38,5 +40,6 @@ First release. Checked against runway CLI 1.49.0.
 - `--version` flag.
 - Release binaries for Linux, macOS and Windows.
 
-[Unreleased]: https://github.com/henrrrik/bojack/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/henrrrik/bojack/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/henrrrik/bojack/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/henrrrik/bojack/releases/tag/v0.1.0
