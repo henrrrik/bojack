@@ -7,7 +7,7 @@ import (
 	"charm.land/bubbles/v2/table"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/henrrrik/runway-tui/internal/msg"
+	"github.com/henrrrik/bojack/internal/msg"
 )
 
 // Viewer is a view the root model can hold without knowing its concrete type.

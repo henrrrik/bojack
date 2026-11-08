@@ -8,11 +8,11 @@ import (
 	"runtime/debug"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/henrrrik/runway-tui/internal/runway"
-	"github.com/henrrrik/runway-tui/internal/tui"
+	"github.com/henrrrik/bojack/internal/runway"
+	"github.com/henrrrik/bojack/internal/tui"
 )
 
-const usage = `Usage: runway-tui [--version]
+const usage = `Usage: bojack [--version]
 
 A terminal UI for Runway. Needs the runway CLI on your PATH, logged in.`
 
@@ -23,12 +23,12 @@ func main() {
 		return
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "runway-tui: %v\n%s\n", err, usage)
+		fmt.Fprintf(os.Stderr, "bojack: %v\n%s\n", err, usage)
 		os.Exit(2)
 	}
 	if opts.version {
 		info, _ := debug.ReadBuildInfo()
-		fmt.Println("runway-tui", resolveVersion(version, info))
+		fmt.Println("bojack", resolveVersion(version, info))
 		return
 	}
 	executor := runway.NewExecCommandExecutor("runway")

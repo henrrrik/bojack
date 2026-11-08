@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to runway-tui. The format follows
+All notable changes to bojack. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
@@ -33,5 +33,5 @@ First release. Checked against runway CLI 1.49.0.
 - `--version` flag.
 - Release binaries for Linux, macOS and Windows.
 
-[Unreleased]: https://github.com/henrrrik/runway-tui/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/henrrrik/runway-tui/releases/tag/v0.1.0
+[Unreleased]: https://github.com/henrrrik/bojack/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/henrrrik/bojack/releases/tag/v0.1.0

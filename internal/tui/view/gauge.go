@@ -5,7 +5,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 // Gauge glyphs: a heavy line fills up to the latest value (in half cells),

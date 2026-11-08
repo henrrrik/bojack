@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/henrrrik/runway-tui/internal/msg"
-	"github.com/henrrrik/runway-tui/internal/runway"
+	"github.com/henrrrik/bojack/internal/msg"
+	"github.com/henrrrik/bojack/internal/runway"
 )
 
 // tableLines returns the tab body's lines between the tab bar and the help line, split into fields.

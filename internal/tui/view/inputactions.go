@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/henrrrik/runway-tui/internal/msg"
+	"github.com/henrrrik/bojack/internal/msg"
 )
 
 // Typed values become CLI arguments, so they must not start with "-".
