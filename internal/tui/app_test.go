@@ -520,3 +520,9 @@ func TestViewReportsMouseClicks(t *testing.T) {
 		t.Error("the TUI should receive mouse clicks")
 	}
 }
+
+func TestViewSetsWindowTitle(t *testing.T) {
+	if got := NewModel(nil).View().WindowTitle; got != view.AppTitle {
+		t.Errorf("WindowTitle = %q, want %q", got, view.AppTitle)
+	}
+}
