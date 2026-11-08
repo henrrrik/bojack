@@ -2,7 +2,6 @@ package view
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -15,8 +14,9 @@ import (
 var appTabs = []string{"Info", "Processes", "Stats", "Config", "Domains", "Sharing", "Logs"}
 
 const (
-	appStatsTab = 2
-	appLogsTab  = 6
+	appStatsTab  = 2
+	appConfigTab = 3
+	appLogsTab   = 6
 )
 
 // AppDetailModel shows app details with tabbed sections.
@@ -25,6 +25,7 @@ type AppDetailModel struct {
 	activeTab     int
 	statsInterval string
 	logOptions    runway.LogOptions
+	revealSecrets bool
 	styles        DetailStyles
 	spinner       spinner.Model
 	width         int
@@ -153,6 +154,10 @@ func (m AppDetailModel) handleKey(k tea.KeyMsg) (AppDetailModel, tea.Cmd) {
 		m.activeTab = (m.activeTab + 1) % len(appTabs)
 	case "shift+tab":
 		m.activeTab = (m.activeTab - 1 + len(appTabs)) % len(appTabs)
+	case revealKey:
+		if m.activeTab == appConfigTab {
+			m.revealSecrets = !m.revealSecrets
+		}
 	case statsIntervalKey:
 		if m.activeTab == appStatsTab {
 			m.statsInterval = NextStatsInterval(m.statsInterval)
@@ -172,6 +177,8 @@ func (m AppDetailModel) View() string {
 	switch m.activeTab {
 	case appStatsTab:
 		help = append([]string{"i: interval"}, help...)
+	case appConfigTab:
+		help = append([]string{revealHelp(m.revealSecrets)}, help...)
 	case appLogsTab:
 		help = append([]string{"a/b/s: toggle app/build/system", "t: range", "l: limit"}, help...)
 	}
@@ -205,7 +212,7 @@ func (m AppDetailModel) renderActiveTab() string {
 		return m.renderProcessesTab()
 	case appStatsTab:
 		return renderStats(m.styles, m.stats, m.width, m.statsInterval)
-	case 3:
+	case appConfigTab:
 		return m.renderConfigTab()
 	case 4:
 		return m.renderDomainsTab()
@@ -263,19 +270,7 @@ func (m AppDetailModel) renderProcessesTab() string {
 }
 
 func (m AppDetailModel) renderConfigTab() string {
-	if len(m.config) == 0 {
-		return "No config vars set."
-	}
-	keys := make([]string, 0, len(m.config))
-	for k := range m.config {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	var b strings.Builder
-	for _, k := range keys {
-		b.WriteString(m.styles.Label.Render(k+":") + " " + m.styles.Value.Render(m.config[k]) + "\n")
-	}
-	return b.String()
+	return renderConfig(m.styles, m.config, m.revealSecrets)
 }
 
 func (m AppDetailModel) renderDomainsTab() string {
