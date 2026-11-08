@@ -17,6 +17,7 @@ type App struct {
 	Type     string       `json:"type"`
 	Plan     string       `json:"plan"`
 	Region   string       `json:"region"`
+	Source   string       `json:"source"` // build method, e.g. "buildpack"; empty for services
 	Features []AppFeature `json:"features"`
 	Meta     AppMeta      `json:"meta"`
 }
@@ -42,11 +43,15 @@ type AppStatus struct {
 	Status           string `json:"status"`
 	DeploymentStatus string `json:"deployment_status"`
 	BuildStatus      string `json:"build_status"`
+	// Integrations' item schema is undocumented (always empty so far), so
+	// items are kept raw.
+	Integrations []json.RawMessage `json:"integrations"`
 }
 
 // AppDetail is the response from "app show -o json".
 type AppDetail struct {
 	App      App         `json:"app"`
+	Status   AppStatus   `json:"status"`
 	Domains  []Domain    `json:"domains"`
 	Settings AppSettings `json:"settings"`
 }
@@ -238,10 +243,16 @@ type Volume struct {
 	App        string `json:"app"`
 	Mountpoint string `json:"mountpoint"`
 	SizeMB     int    `json:"size"`
-	Attachable bool   `json:"attachable"`
-	Detachable bool   `json:"detachable"`
-	Deletable  bool   `json:"deletable"`
-	Resizable  bool   `json:"resizable"`
+	// SizeExtraMB is storage on top of SizeMB, in MB.
+	SizeExtraMB int `json:"size_extra"`
+	// Replicas' item schema is undocumented (always empty so far), so items
+	// are kept raw.
+	Replicas   []json.RawMessage `json:"replicas"`
+	IsReplica  bool              `json:"is_replica"`
+	Attachable bool              `json:"attachable"`
+	Detachable bool              `json:"detachable"`
+	Deletable  bool              `json:"deletable"`
+	Resizable  bool              `json:"resizable"`
 }
 
 // RootDomain represents a verified root domain.

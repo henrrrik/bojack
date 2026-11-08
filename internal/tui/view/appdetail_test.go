@@ -1,6 +1,8 @@
 package view
 
 import (
+	"encoding/json"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -405,5 +407,52 @@ func TestStaleLogsResultIgnored(t *testing.T) {
 	m, _ = m.Update(msg.AppLogsResultMsg{Logs: []runway.LogEntry{{Content: "old"}}, Options: DefaultLogOptions})
 	if !strings.Contains(m.View(), "Loading") {
 		t.Error("result for different options should be ignored")
+	}
+}
+
+func TestAppInfoShowsSourceStatusIntegrations(t *testing.T) {
+	m := NewAppDetailModel("my-app", testDetailStyles(), 120, 24)
+	m, _ = m.Update(msg.AppDetailResultMsg{Detail: &runway.AppDetail{
+		App: runway.App{ID: "my-app", Source: "buildkit"},
+		Status: runway.AppStatus{Status: "running", DeploymentStatus: "deploying",
+			Integrations: []json.RawMessage{json.RawMessage(`{"name":"sentry"}`), json.RawMessage(`"otel"`)}},
+	}})
+	v := m.View()
+	for _, want := range []string{"Source:", "buildkit", "running (deployment: deploying, build: -)", "Integrations:", "sentry, otel"} {
+		if !strings.Contains(v, want) {
+			t.Errorf("info tab should contain %q, got:\n%s", want, v)
+		}
+	}
+}
+
+func TestAppInfoNoIntegrations(t *testing.T) {
+	m := NewAppDetailModel("my-app", testDetailStyles(), 120, 24)
+	m, _ = m.Update(msg.AppDetailResultMsg{Detail: &runway.AppDetail{App: runway.App{ID: "my-app"}}})
+	v := m.View()
+	if !intergrationsNoneRE.MatchString(v) {
+		t.Errorf("info tab should show Integrations: none, got:\n%s", v)
+	}
+	if !sourceDashRE.MatchString(v) {
+		t.Errorf("info tab should show Source: -, got:\n%s", v)
+	}
+}
+
+var (
+	intergrationsNoneRE = regexp.MustCompile(`Integrations:\s+none`)
+	sourceDashRE        = regexp.MustCompile(`Source:\s+-`)
+)
+
+func TestDescribeJSON(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{`"otel"`, "otel"},
+		{`{"name":"sentry","id":"x"}`, "sentry"},
+		{`{"id":"abc"}`, "abc"},
+		{`{"kind":"x"}`, `{"kind":"x"}`},
+		{`42`, "42"},
+	}
+	for _, tt := range tests {
+		if got := describeJSON(json.RawMessage(tt.in)); got != tt.want {
+			t.Errorf("describeJSON(%s) = %q, want %q", tt.in, got, tt.want)
+		}
 	}
 }
