@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // maxTableCellWidth caps column widths in textTable; longer cells are cut
@@ -30,7 +31,7 @@ func textTable(header []string, rows [][]string) string {
 				b.WriteString("  ")
 			}
 			c = truncate(c, widths[i])
-			b.WriteString(c + strings.Repeat(" ", widths[i]-lipgloss.Width(c)))
+			b.WriteString(c + strings.Repeat(" ", max(0, widths[i]-lipgloss.Width(c))))
 		}
 		b.WriteString("\n")
 	}
@@ -41,14 +42,11 @@ func textTable(header []string, rows [][]string) string {
 	return b.String()
 }
 
-// truncate shortens s to width visible characters. Only plain strings are
-// cut; styled cells are expected to be short.
+// truncate shortens s to at most width terminal cells, ending in "…". It
+// measures cells, not runes, so wide characters (CJK, emoji) and styled
+// strings are cut safely.
 func truncate(s string, width int) string {
-	if lipgloss.Width(s) <= width {
-		return s
-	}
-	r := []rune(s)
-	return string(r[:width-1]) + "…"
+	return ansi.Truncate(s, width, "…")
 }
 
 func yesNo(b bool) string {

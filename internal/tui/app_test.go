@@ -184,6 +184,38 @@ func TestWindowSizeUpdatesModel(t *testing.T) {
 	}
 }
 
+// sizeRecorder is a leaf view that records the last window size it got.
+type sizeRecorder struct{ size *tea.WindowSizeMsg }
+
+func (s sizeRecorder) Update(m tea.Msg) (view.Viewer, tea.Cmd) {
+	if sz, ok := m.(tea.WindowSizeMsg); ok {
+		*s.size = sz
+	}
+	return s, nil
+}
+
+func (s sizeRecorder) View() string { return "" }
+
+func TestWindowSizeReachesViewsWithoutLooping(t *testing.T) {
+	m := NewModel(nil)
+	current, behind := &tea.WindowSizeMsg{}, &tea.WindowSizeMsg{}
+	m = m.withLeaf(msg.ViewAppList, sizeRecorder{current})
+	m = m.withLeaf(msg.ViewVolumeList, sizeRecorder{behind})
+	m.currentView = msg.ViewAppList
+	result, cmd := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	if cmd != nil {
+		if _, again := cmd().(tea.WindowSizeMsg); again {
+			t.Fatal("a window size message must not produce another one")
+		}
+	}
+	_ = result.(Model)
+	for name, got := range map[string]*tea.WindowSizeMsg{"current": current, "stacked": behind} {
+		if got.Width != 120 || got.Height != 40 {
+			t.Errorf("%s view got size %dx%d, want 120x40", name, got.Width, got.Height)
+		}
+	}
+}
+
 func TestNestedNavigation(t *testing.T) {
 	m := NewModel(nil)
 	// Navigate: main menu -> app list -> app detail

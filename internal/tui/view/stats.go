@@ -89,7 +89,7 @@ func (s statsView) key(k string, keys []string) (statsView, bool) {
 	case "up", "k":
 		s.cursor = max(0, min(s.cursor, n-1)-1)
 	case "down", "j":
-		s.cursor = min(n-1, s.cursor+1)
+		s.cursor = max(0, min(n-1, s.cursor+1))
 	case pinKey:
 		s = s.togglePin(keys)
 	default:
