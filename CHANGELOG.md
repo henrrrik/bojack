@@ -6,6 +6,14 @@ All notable changes to bojack. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Resizing the terminal no longer starts a busy loop, and every open view now
+  adapts to the new size.
+- Pressing `↓` or `p` on a Stats tab before its data arrived could crash the app
+  once it did.
+- Table cells with wide characters (CJK, emoji) no longer crash the app.
+
 ## [0.1.1] - 2026-11-08
 
 ### Changed
