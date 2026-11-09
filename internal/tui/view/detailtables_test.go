@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/henrrrik/bojack/internal/msg"
 	"github.com/henrrrik/bojack/internal/runway"
 )
@@ -104,4 +106,20 @@ func stripANSI(s string) string {
 		}
 	}
 	return b.String()
+}
+
+func TestTextTableWideCharacters(t *testing.T) {
+	wide := strings.Repeat("漢", 30)              // 60 cells
+	emoji := strings.Repeat("🐴", 25) + "e\u0301" // 51 cells, ending in a combining accent
+	out := textTable([]string{"name", "x"}, [][]string{{wide, "1"}, {emoji, "2"}, {"short", "3"}})
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	col := strings.Index(lines[0], "x")
+	for _, l := range lines {
+		if w := lipgloss.Width(l); w != lipgloss.Width(lines[0]) {
+			t.Errorf("row %q is %d cells wide, want %d", l, w, lipgloss.Width(lines[0]))
+		}
+	}
+	if !strings.Contains(lines[1], "…") || col <= 0 {
+		t.Errorf("wide cells should be cut with …:\n%s", out)
+	}
 }

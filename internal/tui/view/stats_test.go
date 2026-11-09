@@ -181,3 +181,18 @@ func TestStackedChartsShareTheirColumns(t *testing.T) {
 		t.Errorf("both charts should span the same time range (from 10:00):\n%s", strings.Join(labels, "\n"))
 	}
 }
+
+func TestStatsKeysBeforeDataArrives(t *testing.T) {
+	s := statsView{}
+	for _, k := range []string{"down", "j", "p", "up"} {
+		s, _ = s.key(k, nil)
+	}
+	if s.cursor < 0 {
+		t.Fatalf("cursor = %d after keys on empty stats, want >= 0", s.cursor)
+	}
+	keys := twoMetrics().OrderedKeys()
+	_ = s.render(testDetailStyles(), twoMetrics(), 100, 30, "24h")
+	if s, _ = s.key("p", keys); s.pinned != keys[0] {
+		t.Errorf("pinned = %q, want the first metric %q", s.pinned, keys[0])
+	}
+}

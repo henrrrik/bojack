@@ -144,9 +144,7 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 	switch teaMsg := teaMsg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = teaMsg.Width
-		m.height = teaMsg.Height
-		return m, m.propagateSize()
+		return m.resize(teaMsg), nil
 	case msg.NavigateMsg:
 		return m.handleNavigate(teaMsg)
 	case msg.NavigateBackMsg:
@@ -390,8 +388,17 @@ func (m Model) updateLeafView(teaMsg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.withLeaf(m.currentView, v), cmd
 }
 
-func (m Model) propagateSize() tea.Cmd {
-	return func() tea.Msg {
-		return tea.WindowSizeMsg{Width: m.width, Height: m.height}
+// resize records the new window size and passes it to every view, including
+// those further back in the navigation stack, so they fit when shown again.
+// Views don't return commands for a size change.
+func (m Model) resize(size tea.WindowSizeMsg) Model {
+	m.width, m.height = size.Width, size.Height
+	m.mainMenu, _ = m.mainMenu.Update(size)
+	m.appDetail, _ = m.appDetail.Update(size)
+	m.serviceDetail, _ = m.serviceDetail.Update(size)
+	for id, v := range m.leaves {
+		v, _ = v.Update(size)
+		m = m.withLeaf(id, v)
 	}
+	return m
 }
