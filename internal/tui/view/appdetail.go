@@ -85,6 +85,9 @@ func (m AppDetailModel) LogOptions() runway.LogOptions {
 }
 
 func (m AppDetailModel) Update(teaMsg tea.Msg) (AppDetailModel, tea.Cmd) {
+	if isOtherResource(teaMsg, m.appName) {
+		return m, nil
+	}
 	switch teaMsg := teaMsg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = teaMsg.Width

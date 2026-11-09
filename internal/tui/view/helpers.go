@@ -20,30 +20,37 @@ func CmdContext() context.Context {
 	return context.Background()
 }
 
+// isOtherResource reports whether teaMsg is a fetch result for a resource
+// other than name, e.g. a slow reply for the app the user looked at before.
+func isOtherResource(teaMsg tea.Msg, name string) bool {
+	r, ok := teaMsg.(msg.ResourceResult)
+	return ok && r.ResourceName() != name
+}
+
 // FetchAppDetail returns a batch command that fetches all app detail data,
 // with stats over interval and logs selected by logOpts.
 func FetchAppDetail(ctx context.Context, r runway.Runner, name, interval string, logOpts runway.LogOptions) tea.Cmd {
 	return tea.Batch(
 		func() tea.Msg {
 			d, err := r.AppShow(ctx, name)
-			return msg.AppDetailResultMsg{Detail: d, Err: err}
+			return msg.AppDetailResultMsg{Resource: msg.Resource{Name: name}, Detail: d, Err: err}
 		},
 		func() tea.Msg {
 			p, err := r.AppProcesses(ctx, name)
-			return msg.AppProcessesResultMsg{Processes: p, Err: err}
+			return msg.AppProcessesResultMsg{Resource: msg.Resource{Name: name}, Processes: p, Err: err}
 		},
 		FetchAppStats(ctx, r, name, interval),
 		func() tea.Msg {
 			c, err := r.AppConfig(ctx, name)
-			return msg.AppConfigResultMsg{Config: c, Err: err}
+			return msg.AppConfigResultMsg{Resource: msg.Resource{Name: name}, Config: c, Err: err}
 		},
 		func() tea.Msg {
 			d, err := r.AppDomains(ctx, name)
-			return msg.AppDomainsResultMsg{Domains: d, Err: err}
+			return msg.AppDomainsResultMsg{Resource: msg.Resource{Name: name}, Domains: d, Err: err}
 		},
 		func() tea.Msg {
 			s, err := r.AppShares(ctx, name)
-			return msg.AppSharesResultMsg{Shares: s, Err: err}
+			return msg.AppSharesResultMsg{Resource: msg.Resource{Name: name}, Shares: s, Err: err}
 		},
 		FetchAppLogs(ctx, r, name, logOpts),
 	)
@@ -55,20 +62,20 @@ func FetchServiceDetail(ctx context.Context, r runway.Runner, name, interval str
 	return tea.Batch(
 		func() tea.Msg {
 			s, err := r.ServiceShow(ctx, name)
-			return msg.ServiceDetailResultMsg{Service: s, Err: err}
+			return msg.ServiceDetailResultMsg{Resource: msg.Resource{Name: name}, Service: s, Err: err}
 		},
 		FetchServiceStats(ctx, r, name, interval),
 		func() tea.Msg {
 			d, err := r.ServiceDSN(ctx, name)
-			return msg.ServiceDSNResultMsg{DSN: d, Err: err}
+			return msg.ServiceDSNResultMsg{Resource: msg.Resource{Name: name}, DSN: d, Err: err}
 		},
 		func() tea.Msg {
 			c, err := r.ServiceConfig(ctx, name)
-			return msg.ServiceConfigResultMsg{Config: c, Err: err}
+			return msg.ServiceConfigResultMsg{Resource: msg.Resource{Name: name}, Config: c, Err: err}
 		},
 		func() tea.Msg {
 			b, err := r.ServiceBackups(ctx, name)
-			return msg.ServiceBackupsResultMsg{Backups: b, Err: err}
+			return msg.ServiceBackupsResultMsg{Resource: msg.Resource{Name: name}, Backups: b, Err: err}
 		},
 	)
 }
@@ -77,7 +84,7 @@ func FetchServiceDetail(ctx context.Context, r runway.Runner, name, interval str
 func FetchAppStats(ctx context.Context, r runway.Runner, name, interval string) tea.Cmd {
 	return func() tea.Msg {
 		s, err := r.AppStats(ctx, name, interval)
-		return msg.AppStatsResultMsg{Stats: s, Interval: interval, Err: err}
+		return msg.AppStatsResultMsg{Resource: msg.Resource{Name: name}, Stats: s, Interval: interval, Err: err}
 	}
 }
 
@@ -85,7 +92,7 @@ func FetchAppStats(ctx context.Context, r runway.Runner, name, interval string) 
 func FetchAppLogs(ctx context.Context, r runway.Runner, name string, opts runway.LogOptions) tea.Cmd {
 	return func() tea.Msg {
 		l, err := r.AppLogs(ctx, name, opts)
-		return msg.AppLogsResultMsg{Logs: l, Options: opts, Err: err}
+		return msg.AppLogsResultMsg{Resource: msg.Resource{Name: name}, Logs: l, Options: opts, Err: err}
 	}
 }
 
@@ -93,7 +100,7 @@ func FetchAppLogs(ctx context.Context, r runway.Runner, name string, opts runway
 func FetchServiceStats(ctx context.Context, r runway.Runner, name, interval string) tea.Cmd {
 	return func() tea.Msg {
 		s, err := r.ServiceStats(ctx, name, interval)
-		return msg.ServiceStatsResultMsg{Stats: s, Interval: interval, Err: err}
+		return msg.ServiceStatsResultMsg{Resource: msg.Resource{Name: name}, Stats: s, Interval: interval, Err: err}
 	}
 }
 

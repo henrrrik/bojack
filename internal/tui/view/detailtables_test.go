@@ -31,7 +31,7 @@ func tabFields(t *testing.T, v, header string) [][]string {
 
 func TestProcessesTable(t *testing.T) {
 	m := NewAppDetailModel("terry", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.AppProcessesResultMsg{Processes: []runway.Process{
+	m, _ = m.Update(msg.AppProcessesResultMsg{Resource: msg.Resource{Name: "terry"}, Processes: []runway.Process{
 		{Name: "terry-cmd-6fddfd6cd-p2zrl", Type: "cmd", Release: "v7", State: "up", Started: "2026-10-13T19:33:12UTC"},
 		{Name: "terry-cmd-x", Type: "cmd", Release: "v6", State: "crashed", Started: "2026-10-12T10:00:00UTC"},
 	}})
@@ -45,7 +45,7 @@ func TestProcessesTable(t *testing.T) {
 
 func TestDomainsTable(t *testing.T) {
 	m := NewAppDetailModel("terry", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.AppDomainsResultMsg{Domains: []runway.Domain{
+	m, _ = m.Update(msg.AppDomainsResultMsg{Resource: msg.Resource{Name: "terry"}, Domains: []runway.Domain{
 		{Domain: "terry.pqapp.dev", Path: "/", TargetPath: "/"},
 		{Domain: "www.example.com", Path: "/api", TargetPath: "/", Deletable: true,
 			Root: runway.DomainRoot{Domain: "example.com", Verified: true}},
@@ -60,7 +60,7 @@ func TestDomainsTable(t *testing.T) {
 
 func TestSharingTable(t *testing.T) {
 	m := NewAppDetailModel("terry", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.AppSharesResultMsg{Shares: &runway.AppShareList{Data: []runway.AppShare{
+	m, _ = m.Update(msg.AppSharesResultMsg{Resource: msg.Resource{Name: "terry"}, Shares: &runway.AppShareList{Data: []runway.AppShare{
 		{User: "henrrrik", Role: "owner"}, {User: "alice", Role: "developer"},
 	}}})
 	m.activeTab = 5
@@ -72,9 +72,9 @@ func TestSharingTable(t *testing.T) {
 
 func TestDetailTablesEmptyStates(t *testing.T) {
 	m := NewAppDetailModel("terry", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.AppProcessesResultMsg{})
-	m, _ = m.Update(msg.AppDomainsResultMsg{})
-	m, _ = m.Update(msg.AppSharesResultMsg{})
+	m, _ = m.Update(msg.AppProcessesResultMsg{Resource: msg.Resource{Name: "terry"}})
+	m, _ = m.Update(msg.AppDomainsResultMsg{Resource: msg.Resource{Name: "terry"}})
+	m, _ = m.Update(msg.AppSharesResultMsg{Resource: msg.Resource{Name: "terry"}})
 	for tab, want := range map[int]string{1: "No processes running.", 4: "No domains configured.", 5: "No shares configured."} {
 		m.activeTab = tab
 		if !strings.Contains(m.View(), want) {

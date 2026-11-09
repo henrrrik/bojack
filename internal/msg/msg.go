@@ -39,18 +39,36 @@ type NavigateBackMsg struct{}
 
 // Result messages carry data from async fetches.
 
+// Resource names the app, service or item a fetch result belongs to. Views
+// drop results for another resource, which can arrive late after the user
+// has moved on to a different one.
+type Resource struct {
+	Name string
+}
+
+// ResourceName returns the name the result was fetched for.
+func (r Resource) ResourceName() string { return r.Name }
+
+// ResourceResult is a fetch result for one named resource.
+type ResourceResult interface {
+	ResourceName() string
+}
+
 type AppDetailResultMsg struct {
+	Resource
 	Detail *runway.AppDetail
 	Err    error
 }
 
 type AppProcessesResultMsg struct {
+	Resource
 	Processes []runway.Process
 	Err       error
 }
 
 // AppStatsResultMsg carries app stats for the given interval.
 type AppStatsResultMsg struct {
+	Resource
 	Stats    runway.Stats
 	Interval string
 	Err      error
@@ -58,6 +76,7 @@ type AppStatsResultMsg struct {
 
 // ServiceStatsResultMsg carries service stats for the given interval.
 type ServiceStatsResultMsg struct {
+	Resource
 	Stats    runway.Stats
 	Interval string
 	Err      error
@@ -70,22 +89,26 @@ type StatsIntervalMsg struct {
 }
 
 type AppConfigResultMsg struct {
+	Resource
 	Config runway.AppConfig
 	Err    error
 }
 
 type AppDomainsResultMsg struct {
+	Resource
 	Domains []runway.Domain
 	Err     error
 }
 
 type AppSharesResultMsg struct {
+	Resource
 	Shares *runway.AppShareList
 	Err    error
 }
 
 // AppLogsResultMsg carries logs fetched with the given options.
 type AppLogsResultMsg struct {
+	Resource
 	Logs    []runway.LogEntry
 	Options runway.LogOptions
 	Err     error
@@ -98,21 +121,25 @@ type LogOptionsMsg struct {
 }
 
 type ServiceDetailResultMsg struct {
+	Resource
 	Service *runway.Service
 	Err     error
 }
 
 type ServiceDSNResultMsg struct {
+	Resource
 	DSN runway.ServiceDSN
 	Err error
 }
 
 type ServiceConfigResultMsg struct {
+	Resource
 	Config runway.ServiceConfig
 	Err    error
 }
 
 type ServiceBackupsResultMsg struct {
+	Resource
 	Backups json.RawMessage
 	Err     error
 }
@@ -125,6 +152,7 @@ type ListResultMsg[T any] struct {
 
 // ItemResultMsg carries one item fetched for an ItemModel[T].
 type ItemResultMsg[T any] struct {
+	Resource
 	Item *T
 	Err  error
 }

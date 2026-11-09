@@ -542,3 +542,26 @@ func TestInputActions(t *testing.T) {
 		}
 	}
 }
+
+// echoingExecutor fails every command with a CLI error that echoes its
+// arguments back, as a CLI reporting an invalid assignment might.
+type echoingExecutor struct{}
+
+func (echoingExecutor) Execute(_ context.Context, args ...string) ([]byte, error) {
+	return nil, &CLIError{Message: "invalid assignment: " + strings.Join(args, " "), Err: errors.New("exit status 1")}
+}
+
+func TestConfigSetErrorsHideTheValue(t *testing.T) {
+	r, ctx := NewCLIRunner(echoingExecutor{}), context.Background()
+	for name, err := range map[string]error{
+		"AppConfigSet":     r.AppConfigSet(ctx, "terry", "API_TOKEN=sk-live-123"),
+		"ServiceConfigSet": r.ServiceConfigSet(ctx, "db", "API_TOKEN=sk-live-123"),
+	} {
+		if err == nil {
+			t.Fatalf("%s: want an error", name)
+		}
+		if msg := err.Error(); strings.Contains(msg, "sk-live-123") || !strings.Contains(msg, "API_TOKEN=********") {
+			t.Errorf("%s error = %q, want the value hidden and the key kept", name, msg)
+		}
+	}
+}

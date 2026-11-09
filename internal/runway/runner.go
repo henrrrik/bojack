@@ -232,7 +232,18 @@ func (r *CLIRunner) DomainVerify(ctx context.Context, domain string) error {
 // AppConfigSet sets one config value; assignment is KEY=value.
 func (r *CLIRunner) AppConfigSet(ctx context.Context, appName, assignment string) error {
 	_, err := r.exec.Execute(ctx, "app", "config", "set", "-a", appName, assignment, "-y")
-	return err
+	return hideAssignedValue(err, assignment)
+}
+
+// hideAssignedValue removes the value of a KEY=value assignment from err's
+// message: the CLI may echo a failed assignment back, and the value can be a
+// secret. The original error is not wrapped, so it can't be printed later.
+func hideAssignedValue(err error, assignment string) error {
+	_, value, _ := strings.Cut(assignment, "=")
+	if err == nil || value == "" || !strings.Contains(err.Error(), value) {
+		return err
+	}
+	return errors.New(strings.ReplaceAll(err.Error(), value, "********"))
 }
 
 // AppConfigRm removes one config value.
@@ -244,7 +255,7 @@ func (r *CLIRunner) AppConfigRm(ctx context.Context, appName, key string) error 
 // ServiceConfigSet sets one service config value; assignment is KEY=value.
 func (r *CLIRunner) ServiceConfigSet(ctx context.Context, name, assignment string) error {
 	_, err := r.exec.Execute(ctx, "service", "config", "set", name, assignment, "-y")
-	return err
+	return hideAssignedValue(err, assignment)
 }
 
 // ServiceConfigRm removes one service config value.

@@ -19,7 +19,7 @@ func TestServiceDetailShowsName(t *testing.T) {
 
 func TestServiceDetailInfoTab(t *testing.T) {
 	m := NewServiceDetailModel("my-db", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.ServiceDetailResultMsg{
+	m, _ = m.Update(msg.ServiceDetailResultMsg{Resource: msg.Resource{Name: "my-db"},
 		Service: &runway.Service{
 			Name: "my-db",
 			Type: "postgres",
@@ -49,7 +49,7 @@ func TestServiceDetailTabSwitching(t *testing.T) {
 
 func TestServiceDetailDSNTab(t *testing.T) {
 	m := NewServiceDetailModel("my-db", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.ServiceDSNResultMsg{
+	m, _ = m.Update(msg.ServiceDSNResultMsg{Resource: msg.Resource{Name: "my-db"},
 		DSN: runway.ServiceDSN{"DATABASE_URL": "postgres://localhost/db"},
 	})
 	m.activeTab = 4
@@ -61,7 +61,7 @@ func TestServiceDetailDSNTab(t *testing.T) {
 
 func TestServiceDetailVolumeSizeInMB(t *testing.T) {
 	m := NewServiceDetailModel("my-db", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.ServiceDetailResultMsg{
+	m, _ = m.Update(msg.ServiceDetailResultMsg{Resource: msg.Resource{Name: "my-db"},
 		Service: &runway.Service{
 			Name:    "my-db",
 			Volumes: []runway.ServiceVolume{{Name: "data", Size: "5120", Mountpoint: "/data"}},
@@ -78,7 +78,7 @@ func TestServiceDetailVolumeSizeInMB(t *testing.T) {
 
 func TestServiceDetailStatsTab(t *testing.T) {
 	m := NewServiceDetailModel("my-db", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.ServiceStatsResultMsg{
+	m, _ = m.Update(msg.ServiceStatsResultMsg{Resource: msg.Resource{Name: "my-db"},
 		Stats: runway.Stats{
 			"db_tps": {Title: "Transactions", Unit: "tps", Data: []runway.StatsPoint{{Value: 1}, {Value: 2}}},
 		},

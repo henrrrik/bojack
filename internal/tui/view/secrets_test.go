@@ -19,6 +19,9 @@ func TestMaskSecrets(t *testing.T) {
 		{"host=db user=app password=secret dbname=app", "host=db user=app password=******** dbname=app"},
 		{"mongodb://db/app?authSource=admin&password=secret&tls=true", "mongodb://db/app?authSource=admin&password=********&tls=true"},
 		{"just-a-value", "just-a-value"},
+		{"host=db password='alpha beta' dbname=app", "host=db password=******** dbname=app"},
+		{`host=db password='it\'s secret' user=app`, "host=db password=******** user=app"},
+		{`password="two words" host=db`, "password=******** host=db"},
 	}
 	for _, tt := range tests {
 		if got := maskSecrets(tt.in); got != tt.want {
@@ -29,7 +32,7 @@ func TestMaskSecrets(t *testing.T) {
 
 func dsnModel() ServiceDetailModel {
 	m := NewServiceDetailModel("my-db", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.ServiceDSNResultMsg{DSN: runway.ServiceDSN{
+	m, _ = m.Update(msg.ServiceDSNResultMsg{Resource: msg.Resource{Name: "my-db"}, DSN: runway.ServiceDSN{
 		"DATABASE_URL": "postgres://app:topsecret@db:5432/app",
 		"ALT_URL":      "postgres://app:topsecret@db-ro:5432/app",
 	}})
@@ -82,6 +85,7 @@ func TestIsSecretKey(t *testing.T) {
 		"DB_PASS": true, "SMTP_PWD": true, "AUTH_TOKEN": true, "JWT_SALT": true, "PRIVATE_KEY": true,
 		"AWS_ACCESS_KEY_ID": true, "GITHUB_CREDENTIALS": true, "apiKey": true, "session-secret": true,
 		"TS_AUTHKEY": true, "OPENAI_APIKEY": true, "GHTOKEN": true, "OAUTH_CLIENTSECRET": true, "AUTH_SECRET": true,
+		"AUTHORIZATION": true, "PROXY_AUTHORIZATION": true, "SESSION_COOKIE": true,
 		"PORT": false, "DATABASE_URL": false, "KEYBOARD_LAYOUT": false, "AUTH_URL": false,
 		"LOG_LEVEL": false, "PASSENGER_COUNT": false, "": false,
 	}
@@ -98,6 +102,10 @@ func TestMaskConfigValue(t *testing.T) {
 		{"API_TOKEN", "", ""},
 		{"DATABASE_URL", "postgres://u:pw@h/db", "postgres://u:********@h/db"},
 		{"PORT", "8080", "8080"},
+		{"AUTH", "Bearer sk-live-abc", secretMask},
+		{"UPSTREAM_AUTHORIZATION", "basic dXNlcjpwYXNz", secretMask},
+		{"TLS_PEM", "-----BEGIN PRIVATE KEY-----\nMIIE...", secretMask},
+		{"GREETING", "Basically fine", "Basically fine"},
 	}
 	for _, tt := range tests {
 		if got := maskConfigValue(tt.key, tt.value); got != tt.want {
@@ -126,7 +134,7 @@ func assertMaskedConfig(t *testing.T, v string) {
 
 func TestAppConfigTabMasksAndReveals(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.AppConfigResultMsg{Config: testConfig})
+	m, _ = m.Update(msg.AppConfigResultMsg{Resource: msg.Resource{Name: "my-app"}, Config: testConfig})
 	m.activeTab = appConfigTab
 	assertMaskedConfig(t, m.View())
 	m, _ = m.Update(vKey())
@@ -137,7 +145,7 @@ func TestAppConfigTabMasksAndReveals(t *testing.T) {
 
 func TestAppRevealKeyIgnoredOutsideConfigTab(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.AppConfigResultMsg{Config: testConfig})
+	m, _ = m.Update(msg.AppConfigResultMsg{Resource: msg.Resource{Name: "my-app"}, Config: testConfig})
 	m, _ = m.Update(vKey()) // on Info tab
 	m.activeTab = appConfigTab
 	assertMaskedConfig(t, m.View())
@@ -145,11 +153,22 @@ func TestAppRevealKeyIgnoredOutsideConfigTab(t *testing.T) {
 
 func TestServiceConfigTabMasksAndReveals(t *testing.T) {
 	m := NewServiceDetailModel("my-db", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.ServiceConfigResultMsg{Config: testConfig})
+	m, _ = m.Update(msg.ServiceConfigResultMsg{Resource: msg.Resource{Name: "my-db"}, Config: testConfig})
 	m.activeTab = serviceConfigTab
 	assertMaskedConfig(t, m.View())
 	m, _ = m.Update(vKey())
 	if v := m.View(); !strings.Contains(v, "tok_live_123") {
 		t.Errorf("v should reveal service config secrets, got:\n%s", v)
+	}
+}
+
+func TestDSNTabMasksSecretKeys(t *testing.T) {
+	m := NewServiceDetailModel("my-db", testDetailStyles(), 120, 24)
+	m, _ = m.Update(msg.ServiceDSNResultMsg{Resource: msg.Resource{Name: "my-db"}, DSN: runway.ServiceDSN{
+		"PASSWORD": "plainpw", "HOST": "db",
+	}})
+	m.activeTab = serviceDSNTab
+	if v := m.View(); strings.Contains(v, "plainpw") || !strings.Contains(v, "db") {
+		t.Errorf("a DSN field named like a secret should be masked:\n%s", v)
 	}
 }

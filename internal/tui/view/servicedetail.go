@@ -73,6 +73,9 @@ func (m ServiceDetailModel) StatsInterval() string {
 }
 
 func (m ServiceDetailModel) Update(teaMsg tea.Msg) (ServiceDetailModel, tea.Cmd) {
+	if isOtherResource(teaMsg, m.name) {
+		return m, nil
+	}
 	switch teaMsg := teaMsg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = teaMsg.Width
@@ -300,7 +303,7 @@ func (m ServiceDetailModel) renderDSNTab() string {
 	for _, k := range keys {
 		v := m.dsn[k]
 		if !m.revealSecrets {
-			v = maskSecrets(v)
+			v = maskConfigValue(k, v)
 		}
 		b.WriteString(m.styles.Label.Render(k+":") + " " + m.styles.Value.Render(v) + "\n")
 	}
