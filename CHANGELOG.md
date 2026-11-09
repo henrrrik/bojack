@@ -6,6 +6,17 @@ All notable changes to bojack. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A slow reply for an app, service or volume you've already left no longer
+  shows up in the next one you open.
+- Secret masking: quoted DSN passwords (`password='a b'`) are fully hidden;
+  `Bearer`/`Basic` credentials and PEM keys are masked under any config key;
+  `AUTHORIZATION` and `COOKIE` keys count as secret; DSN fields named like
+  secrets are masked.
+- If setting a config value fails and the CLI echoes it back, the value is
+  hidden in the error.
+
 ## [0.1.1] - 2026-11-08
 
 ### Changed

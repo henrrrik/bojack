@@ -155,7 +155,7 @@ func TestServiceConfigSet(t *testing.T) {
 
 func loadedVolume(v runway.Volume) Viewer {
 	var m Viewer = NewVolumeDetailModel(v.Name, testDetailStyles(), 120, 30)
-	m, _ = m.Update(msg.ItemResultMsg[runway.Volume]{Item: &v})
+	m, _ = m.Update(msg.ItemResultMsg[runway.Volume]{Resource: msg.Resource{Name: v.Name}, Item: &v})
 	return m
 }
 

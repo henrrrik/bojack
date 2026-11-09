@@ -9,8 +9,9 @@ import (
 const secretMask = "********"
 
 // passwordParamRE matches password key/value pairs in libpq-style DSNs
-// ("password=x") and query strings ("&password=x").
-var passwordParamRE = regexp.MustCompile(`(?i)\b(password|passwd|pwd)=([^\s&;]+)`)
+// ("password=x", "password='a b'", with \' escapes) and query strings
+// ("&password=x").
+var passwordParamRE = regexp.MustCompile(`(?i)\b(password|passwd|pwd)=('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|[^\s&;]+)`)
 
 // maskSecrets hides passwords in a connection string: the password part of a
 // URL's userinfo and any password= parameter. Everything else is preserved
@@ -43,7 +44,14 @@ func maskURLPassword(s string) string {
 
 // secretKeyWords are whole words that mark a config var as secret. Keys are
 // split into words on non-alphanumerics.
-var secretKeyWords = map[string]bool{"PASS": true, "PWD": true, "PRIVATE": true, "SALT": true, "CREDENTIAL": true, "CREDENTIALS": true}
+var secretKeyWords = map[string]bool{
+	"PASS": true, "PWD": true, "PRIVATE": true, "SALT": true, "CREDENTIAL": true, "CREDENTIALS": true,
+	"AUTHORIZATION": true, "COOKIE": true,
+}
+
+// secretValueRE matches values that are secrets whatever their key is called:
+// HTTP credentials ("Bearer x", "Basic x") and PEM blocks.
+var secretValueRE = regexp.MustCompile(`(?i)^\s*(bearer|basic|token)\s+\S|-----BEGIN [A-Z ]+-----`)
 
 // secretKeyParts mark a word as secret wherever they appear in it, catching
 // compounds like CLIENTSECRET or GHTOKEN.
@@ -72,10 +80,11 @@ func containsAny(s string, parts []string) bool {
 	return false
 }
 
-// maskConfigValue hides a config value entirely if its key looks secret, and
-// otherwise masks any password embedded in it (e.g. in DATABASE_URL).
+// maskConfigValue hides a config value entirely if its key or value looks
+// secret, and otherwise masks any password embedded in it (e.g. in
+// DATABASE_URL).
 func maskConfigValue(key, value string) string {
-	if value != "" && isSecretKey(key) {
+	if value != "" && (isSecretKey(key) || secretValueRE.MatchString(value)) {
 		return secretMask
 	}
 	return maskSecrets(value)

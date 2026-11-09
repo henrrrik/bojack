@@ -88,7 +88,7 @@ func itemView[T any](
 		},
 		fetch: func(m Model, name string) tea.Cmd {
 			r := m.runner
-			return view.FetchItem(view.CmdContext(), func(ctx context.Context) (*T, error) { return fetch(r, ctx, name) })
+			return view.FetchItem(view.CmdContext(), name, func(ctx context.Context) (*T, error) { return fetch(r, ctx, name) })
 		},
 	}
 }

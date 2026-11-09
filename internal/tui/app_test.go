@@ -488,7 +488,7 @@ func TestDetailInputGetsGlobalKeys(t *testing.T) {
 func TestVolumeResizeRefetches(t *testing.T) {
 	fake := &fakeStatsRunner{}
 	result, cmd := NewModel(fake).handleNavigate(msg.NavigateMsg{View: msg.ViewVolumeDetail, Param: "data-1"})
-	result, _ = result.Update(msg.ItemResultMsg[runway.Volume]{Item: &runway.Volume{Name: "data-1", SizeMB: 100, Resizable: true}})
+	result, _ = result.Update(msg.ItemResultMsg[runway.Volume]{Resource: msg.Resource{Name: "data-1"}, Item: &runway.Volume{Name: "data-1", SizeMB: 100, Resizable: true}})
 	_ = cmd
 	result = pressKeys(result, "S", "200")
 	result, _ = result.Update(tea.KeyPressMsg{Code: tea.KeyEnter})

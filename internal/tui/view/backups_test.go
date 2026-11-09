@@ -69,7 +69,7 @@ func TestRenderBackupsUnknownShapeFallsBackToJSON(t *testing.T) {
 
 func TestServiceDetailBackupsTabUsesTable(t *testing.T) {
 	m := NewServiceDetailModel("my-db", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.ServiceBackupsResultMsg{Backups: json.RawMessage(`{"results":[{"id":"b1"}]}`)})
+	m, _ = m.Update(msg.ServiceBackupsResultMsg{Resource: msg.Resource{Name: "my-db"}, Backups: json.RawMessage(`{"results":[{"id":"b1"}]}`)})
 	m.activeTab = serviceBackupsTab
 	v := m.View()
 	if !strings.Contains(v, "b1") || strings.Contains(v, "results") {

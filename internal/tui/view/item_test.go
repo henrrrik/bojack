@@ -15,7 +15,7 @@ func TestTemplateDetailShowsFields(t *testing.T) {
 	if out := v.View(); !strings.Contains(out, "Fetching template") {
 		t.Errorf("before the result it should show a spinner, got:\n%s", out)
 	}
-	v, _ = v.Update(msg.ItemResultMsg[runway.Template]{Item: &runway.Template{
+	v, _ = v.Update(msg.ItemResultMsg[runway.Template]{Resource: msg.Resource{Name: "valkey"}, Item: &runway.Template{
 		Name: "valkey", DisplayName: "Valkey", Category: "cache", Maintainer: "runway",
 		MinPlan: "free-launch", Latest: "0.2.0", Versions: []string{"0.1.1", "0.2.0"},
 		Description: "In-memory key-value store.\nNot reachable from the internet.\n",
@@ -31,7 +31,7 @@ func TestTemplateDetailShowsFields(t *testing.T) {
 
 func TestVolumeDetailShowsFields(t *testing.T) {
 	var v Viewer = NewVolumeDetailModel("data-1", testDetailStyles(), 100, 30)
-	v, _ = v.Update(msg.ItemResultMsg[runway.Volume]{Item: &runway.Volume{
+	v, _ = v.Update(msg.ItemResultMsg[runway.Volume]{Resource: msg.Resource{Name: "data-1"}, Item: &runway.Volume{
 		Name: "data-1", App: "my-db", Mountpoint: "/data", SizeMB: 5120, Resizable: true,
 	}})
 	out := v.View()
@@ -44,7 +44,7 @@ func TestVolumeDetailShowsFields(t *testing.T) {
 
 func TestItemDetailShowsError(t *testing.T) {
 	var v Viewer = NewVolumeDetailModel("nope", testDetailStyles(), 100, 30)
-	v, _ = v.Update(msg.ItemResultMsg[runway.Volume]{Err: errors.New("volume does not exist")})
+	v, _ = v.Update(msg.ItemResultMsg[runway.Volume]{Resource: msg.Resource{Name: "nope"}, Err: errors.New("volume does not exist")})
 	if out := v.View(); !strings.Contains(out, "volume does not exist") {
 		t.Errorf("view should show the error, got:\n%s", out)
 	}

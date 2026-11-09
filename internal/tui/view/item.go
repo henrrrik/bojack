@@ -65,6 +65,9 @@ func (m ItemModel[T]) ClaimsKey(string) bool {
 }
 
 func (m ItemModel[T]) Update(teaMsg tea.Msg) (Viewer, tea.Cmd) {
+	if isOtherResource(teaMsg, m.name) {
+		return m, nil
+	}
 	switch teaMsg := teaMsg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = teaMsg.Width, teaMsg.Height
@@ -128,10 +131,11 @@ func capitalize(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-// FetchItem returns a command that runs fetch and wraps the result for ItemModel[T].
-func FetchItem[T any](ctx context.Context, fetch func(context.Context) (*T, error)) tea.Cmd {
+// FetchItem returns a command that runs fetch for the item called name and
+// wraps the result for ItemModel[T].
+func FetchItem[T any](ctx context.Context, name string, fetch func(context.Context) (*T, error)) tea.Cmd {
 	return func() tea.Msg {
 		item, err := fetch(ctx)
-		return msg.ItemResultMsg[T]{Item: item, Err: err}
+		return msg.ItemResultMsg[T]{Resource: msg.Resource{Name: name}, Item: item, Err: err}
 	}
 }

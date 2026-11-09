@@ -40,7 +40,7 @@ func TestAppDetailShowsAppName(t *testing.T) {
 
 func TestAppDetailInfoTab(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.AppDetailResultMsg{
+	m, _ = m.Update(msg.AppDetailResultMsg{Resource: msg.Resource{Name: "my-app"},
 		Detail: &runway.AppDetail{
 			App:      runway.App{ID: "my-app", Plan: "standard-1", Region: "eu-north-1"},
 			Settings: runway.AppSettings{Routable: true},
@@ -75,7 +75,7 @@ func TestAppDetailTabSwitching(t *testing.T) {
 
 func TestAppDetailProcessesTab(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.AppProcessesResultMsg{
+	m, _ = m.Update(msg.AppProcessesResultMsg{Resource: msg.Resource{Name: "my-app"},
 		Processes: []runway.Process{
 			{Name: "web.1", Type: "web", State: "up", Release: "v42"},
 		},
@@ -89,7 +89,7 @@ func TestAppDetailProcessesTab(t *testing.T) {
 
 func TestAppDetailConfigTab(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.AppConfigResultMsg{
+	m, _ = m.Update(msg.AppConfigResultMsg{Resource: msg.Resource{Name: "my-app"},
 		Config: runway.AppConfig{"PORT": "8080"},
 	})
 	m.activeTab = 3
@@ -101,7 +101,7 @@ func TestAppDetailConfigTab(t *testing.T) {
 
 func TestAppDetailLogsTab(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.AppLogsResultMsg{
+	m, _ = m.Update(msg.AppLogsResultMsg{Resource: msg.Resource{Name: "my-app"},
 		Logs: []runway.LogEntry{
 			{Content: "shutting down server", Time: "2026-04-05T23:27:57Z", Type: "app"},
 		},
@@ -119,7 +119,7 @@ func TestAppDetailLogsTab(t *testing.T) {
 
 func statsModel(stats runway.Stats) AppDetailModel {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.AppStatsResultMsg{Stats: stats, Interval: DefaultStatsInterval})
+	m, _ = m.Update(msg.AppStatsResultMsg{Resource: msg.Resource{Name: "my-app"}, Stats: stats, Interval: DefaultStatsInterval})
 	m.activeTab = 2
 	return m
 }
@@ -217,7 +217,7 @@ func TestFormatStatValue(t *testing.T) {
 
 func TestAppDetailErrorTab(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24)
-	m, _ = m.Update(msg.AppDetailResultMsg{Err: errTest})
+	m, _ = m.Update(msg.AppDetailResultMsg{Resource: msg.Resource{Name: "my-app"}, Err: errTest})
 	v := m.View()
 	if !strings.Contains(v, "Error") {
 		t.Error("should show error on info tab")
@@ -263,7 +263,7 @@ func TestStatsIntervalKeyIgnoredOutsideStatsTab(t *testing.T) {
 func TestStaleStatsResultIgnored(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24).WithStatsInterval("1h")
 	m.activeTab = 2
-	m, _ = m.Update(msg.AppStatsResultMsg{Stats: runway.Stats{"cpu": {Title: "CPU"}}, Interval: "24h"})
+	m, _ = m.Update(msg.AppStatsResultMsg{Resource: msg.Resource{Name: "my-app"}, Stats: runway.Stats{"cpu": {Title: "CPU"}}, Interval: "24h"})
 	if !strings.Contains(m.View(), "Loading") {
 		t.Error("result for a different interval should be ignored")
 	}
@@ -271,7 +271,7 @@ func TestStaleStatsResultIgnored(t *testing.T) {
 
 func logsModel() AppDetailModel {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.AppLogsResultMsg{
+	m, _ = m.Update(msg.AppLogsResultMsg{Resource: msg.Resource{Name: "my-app"},
 		Logs:    []runway.LogEntry{{Content: "hello", Time: "2026-11-07T00:00:00Z", Type: "app"}},
 		Options: DefaultLogOptions,
 	})
@@ -342,7 +342,7 @@ func TestLogsKeysIgnoredOutsideLogsTab(t *testing.T) {
 func TestStaleLogsResultIgnored(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 80, 24).WithLogOptions(runway.LogOptions{Limit: 500})
 	m.activeTab = appLogsTab
-	m, _ = m.Update(msg.AppLogsResultMsg{Logs: []runway.LogEntry{{Content: "old"}}, Options: DefaultLogOptions})
+	m, _ = m.Update(msg.AppLogsResultMsg{Resource: msg.Resource{Name: "my-app"}, Logs: []runway.LogEntry{{Content: "old"}}, Options: DefaultLogOptions})
 	if !strings.Contains(m.View(), "Loading") {
 		t.Error("result for different options should be ignored")
 	}
@@ -350,7 +350,7 @@ func TestStaleLogsResultIgnored(t *testing.T) {
 
 func TestAppInfoShowsSourceStatusIntegrations(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.AppDetailResultMsg{Detail: &runway.AppDetail{
+	m, _ = m.Update(msg.AppDetailResultMsg{Resource: msg.Resource{Name: "my-app"}, Detail: &runway.AppDetail{
 		App: runway.App{ID: "my-app", Source: "buildkit"},
 		Status: runway.AppStatus{Status: "running", DeploymentStatus: "deploying",
 			Integrations: []json.RawMessage{json.RawMessage(`{"name":"sentry"}`), json.RawMessage(`"otel"`)}},
@@ -365,7 +365,7 @@ func TestAppInfoShowsSourceStatusIntegrations(t *testing.T) {
 
 func TestAppInfoNoIntegrations(t *testing.T) {
 	m := NewAppDetailModel("my-app", testDetailStyles(), 120, 24)
-	m, _ = m.Update(msg.AppDetailResultMsg{Detail: &runway.AppDetail{App: runway.App{ID: "my-app"}}})
+	m, _ = m.Update(msg.AppDetailResultMsg{Resource: msg.Resource{Name: "my-app"}, Detail: &runway.AppDetail{App: runway.App{ID: "my-app"}}})
 	v := m.View()
 	if !intergrationsNoneRE.MatchString(v) {
 		t.Errorf("info tab should show Integrations: none, got:\n%s", v)
@@ -398,7 +398,7 @@ func TestDescribeJSON(t *testing.T) {
 func TestAppStatsArrowSelectsMetric(t *testing.T) {
 	m := NewAppDetailModel("terry", testDetailStyles(), 100, 40)
 	m.activeTab = appStatsTab
-	m, _ = m.Update(msg.AppStatsResultMsg{Stats: twoMetrics(), Interval: DefaultStatsInterval})
+	m, _ = m.Update(msg.AppStatsResultMsg{Resource: msg.Resource{Name: "terry"}, Stats: twoMetrics(), Interval: DefaultStatsInterval})
 	if !strings.Contains(m.View(), "↑/↓: metric") {
 		t.Errorf("help should offer ↑/↓, got:\n%s", m.View())
 	}
